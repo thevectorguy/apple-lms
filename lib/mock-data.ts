@@ -596,36 +596,36 @@ export const courses: Course[] = [
 // User Skill Profile based on completed assessments
 export const userSkillProfile: UserSkillProfile = {
   radarData: {
-    communication: 72,
-    technical: 85,
-    leadership: 45,
-    compliance: 60,
+    communication: 74,
+    technical: 46,
+    leadership: 68,
+    compliance: 72,
   },
-  readinessScore: 78,
-  weakAreas: ['leadership', 'compliance'],
-  strongAreas: ['technical', 'communication'],
+  readinessScore: 65,
+  weakAreas: ['technical'],
+  strongAreas: ['communication', 'compliance'],
   skillGapByCategory: {
-    communication: 28,
-    technical: 15,
-    leadership: 55,
-    compliance: 40,
+    communication: 26,
+    technical: 54,
+    leadership: 32,
+    compliance: 28,
   },
   competencyHistory: [
     {
       id: 'evt-seed-1',
       type: 'ai_practice',
-      skillCategory: 'communication',
-      score: 82,
+      skillCategory: 'technical',
+      score: 74,
       impactWeight: 0.45,
-      sourceId: 'practice-roleplay',
-      sourceTitle: 'Roleplay with Alex',
+      sourceId: 'practice-technical-confidence',
+      sourceTitle: 'Technical confidence practice',
       timestamp: '2026-03-20T10:30:00.000Z',
     },
     {
       id: 'evt-seed-2',
       type: 'assessment',
       skillCategory: 'technical',
-      score: 88,
+      score: 63,
       impactWeight: 0.25,
       sourceId: 'fa-c1-1',
       sourceTitle: 'Hardware Essentials Assessment',
@@ -634,8 +634,8 @@ export const userSkillProfile: UserSkillProfile = {
   ],
   nextStepPlan: null,
   recommendations: [
-    'Complete the Leadership & Team Management course to improve your leadership skills',
-    'Review Compliance & Ethics module for better policy understanding',
+    'Practice with AI Coach to strengthen technical confidence in customer conversations',
+    'Open iPhone 16 Pro Mastery and review the next unfinished lesson',
   ],
 }
 
