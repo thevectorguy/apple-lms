@@ -18,6 +18,10 @@ yarn-error.log*
 .playwright-cli/
 .playwright-mcp/
 /output/
+/3000_*.png
+/3001_*.png
+/genz_ui_*.png
+/ios_sales_*.png
 
 # env files
 .env*
