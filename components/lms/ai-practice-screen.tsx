@@ -7,9 +7,12 @@ import { cn } from '@/lib/utils'
 import type { Course, SkillCategory, UserSkillProfile } from '@/lib/types'
 
 interface AIPracticeScreenProps {
+  autoStartFromPlan?: boolean
   profile: UserSkillProfile
   courses: Course[]
   onSkillUpdate: (skillCategory: SkillCategory, score: number) => void
+  onRoleplayComplete?: (roleplayId: string) => void
+  onReturnToCourseReward?: (courseId: string, roleplayId: string) => void
   onOpenCourse?: (courseId: string) => void
   onBack?: () => void
 }
@@ -56,6 +59,12 @@ interface SessionResult {
   xp: number
   strengths: string[]
   improvements: string[]
+}
+
+interface SessionContext {
+  scenario: string
+  roleplayId?: string
+  courseId?: string
 }
 
 const PRACTICE_COACH = {
@@ -454,13 +463,17 @@ function SessionMessageBubble({ message }: { message: SessionMessage }) {
 function PracticeComplete({
   result,
   duration,
+  returnToCourseLabel,
   onClose,
   onRestart,
+  onReturnToCourse,
 }: {
   result: SessionResult
   duration: number
+  returnToCourseLabel?: string
   onClose: () => void
   onRestart: () => void
+  onReturnToCourse?: () => void
 }) {
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
@@ -504,9 +517,15 @@ function PracticeComplete({
         </div>
 
         <div className="mt-6 flex gap-3">
-          <Button variant="outline" className="flex-1 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10" onClick={onClose}>
-            Done
-          </Button>
+          {onReturnToCourse && returnToCourseLabel ? (
+            <Button className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 font-semibold text-slate-950 hover:opacity-95" onClick={onReturnToCourse}>
+              {returnToCourseLabel}
+            </Button>
+          ) : (
+            <Button variant="outline" className="flex-1 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10" onClick={onClose}>
+              Done
+            </Button>
+          )}
           <Button className="flex-1 rounded-full bg-gradient-to-r from-primary to-accent font-semibold text-white" onClick={onRestart}>
             Practice again
           </Button>
@@ -517,9 +536,12 @@ function PracticeComplete({
 }
 
 export function AIPracticeScreen({
+  autoStartFromPlan = false,
   profile,
   courses,
   onSkillUpdate,
+  onRoleplayComplete,
+  onReturnToCourseReward,
   onOpenCourse,
   onBack,
 }: AIPracticeScreenProps) {
@@ -556,7 +578,9 @@ export function AIPracticeScreen({
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [result, setResult] = useState<SessionResult | null>(null)
+  const [sessionContext, setSessionContext] = useState<SessionContext | null>(null)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
+  const autoStartedRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (screen !== 'active') return
@@ -568,6 +592,27 @@ export function AIPracticeScreen({
     if (!transcriptRef.current) return
     transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
   }, [sessionMessages, screen])
+
+  useEffect(() => {
+    if (!autoStartFromPlan) return
+    const scenario = profile.nextStepPlan?.scenario
+    if (scenario && profile.nextStepPlan?.type === 'ai_practice' && autoStartedRef.current !== scenario) {
+      autoStartedRef.current = scenario
+      setSelectedTopic(scenario)
+      setTopicDraft(scenario)
+      setSessionContext({
+        scenario,
+        roleplayId: profile.nextStepPlan.roleplayId,
+        courseId: profile.nextStepPlan.courseId,
+      })
+      setSessionMessages(buildPracticeSessionMessages(scenario, formatSkillLabel(profile.nextStepPlan.skillCategory)))
+      setElapsedSeconds(0)
+      setResult(null)
+      setAiState('speaking')
+      setScreen('active')
+      window.setTimeout(() => setAiState('idle'), 1100)
+    }
+  }, [autoStartFromPlan, profile.nextStepPlan])
 
   const openPracticePanel = (initialTopic?: string) => {
     setPracticeOpen(true)
@@ -600,6 +645,7 @@ export function AIPracticeScreen({
     setSelectedTopic(topic)
     setTopicDraft(topic)
     setPracticeOpen(false)
+    setSessionContext({ scenario: topic })
     setSessionMessages(buildPracticeSessionMessages(topic, focusLabel))
     setElapsedSeconds(0)
     setResult(null)
@@ -644,6 +690,9 @@ export function AIPracticeScreen({
     const nextResult = buildPracticeResult(focusSkill)
     setResult(nextResult)
     onSkillUpdate(focusSkill, nextResult.score)
+    if (sessionContext?.roleplayId) {
+      onRoleplayComplete?.(sessionContext.roleplayId)
+    }
     setAiState('idle')
     setScreen('complete')
   }
@@ -741,6 +790,12 @@ export function AIPracticeScreen({
             duration={elapsedSeconds}
             onClose={() => setScreen('dashboard')}
             onRestart={restartSession}
+            returnToCourseLabel={sessionContext?.courseId && sessionContext.roleplayId ? 'Return to reward' : undefined}
+            onReturnToCourse={
+              sessionContext?.courseId && sessionContext.roleplayId
+                ? () => onReturnToCourseReward?.(sessionContext.courseId!, sessionContext.roleplayId!)
+                : undefined
+            }
           />
         )}
       </div>

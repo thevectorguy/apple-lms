@@ -11,6 +11,7 @@ interface CardFlipGameProps {
   game: MiniGame
   onComplete: (score: number, xpEarned: number) => void
   onShareScore?: (score: number, xpEarned: number) => void
+  continueLabel?: string
   onClose: () => void
 }
 
@@ -37,7 +38,7 @@ function createShuffledCards(game: MiniGame): Card[] {
     .sort(() => Math.random() - 0.5)
 }
 
-export function CardFlipGame({ game, onComplete, onShareScore, onClose }: CardFlipGameProps) {
+export function CardFlipGame({ game, onComplete, onShareScore, continueLabel = 'Continue Journey', onClose }: CardFlipGameProps) {
   const [cards, setCards] = useState<Card[]>([])
   const [selectedCard, setSelectedCard] = useState<number | null>(null)
   const [timer, setTimer] = useState(15)
@@ -149,7 +150,7 @@ export function CardFlipGame({ game, onComplete, onShareScore, onClose }: CardFl
             </p>
           )}
 
-          <div className={cn('gap-3', shouldOfferRetry && !shouldOfferShare ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
+          <div className={cn('gap-3', shouldOfferRetry !== shouldOfferShare ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
             {shouldOfferRetry && (
               <Button variant="outline" className={cn('w-full', !shouldOfferShare && 'max-w-[220px]')} onClick={resetGame}>
                 <RotateCcw className="mr-2 h-4 w-4" />
@@ -158,8 +159,10 @@ export function CardFlipGame({ game, onComplete, onShareScore, onClose }: CardFl
             )}
             {shouldOfferShare && (
               <Button
-                variant="outline"
-                className="w-full"
+                className={cn(
+                  'w-full border border-fuchsia-300/24 bg-[linear-gradient(180deg,rgba(168,85,247,0.24)_0%,rgba(91,33,182,0.34)_100%)] font-semibold text-fuchsia-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(91,33,182,0.22)] hover:bg-[linear-gradient(180deg,rgba(168,85,247,0.32)_0%,rgba(91,33,182,0.42)_100%)]',
+                  !shouldOfferRetry && 'max-w-[240px]',
+                )}
                 disabled={shared}
                 onClick={() => {
                   onShareScore?.(percent, xpEarned)
@@ -172,7 +175,7 @@ export function CardFlipGame({ game, onComplete, onShareScore, onClose }: CardFl
           </div>
 
           <Button className="w-full bg-gradient-to-r from-purple-500 to-violet-600" onClick={() => onComplete(percent, xpEarned)}>
-            Continue Journey
+            {continueLabel}
           </Button>
         </motion.div>
       </div>

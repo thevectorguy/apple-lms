@@ -22,7 +22,8 @@ export const currentUser: User = {
   level: 12,
   xp: 2450,
   xpToNextLevel: 3000,
-  streak: 7,
+  streak: 4,
+  dailyGoalsStreakClaimed: false,
   totalLessonsCompleted: 45,
   badges: [
     { id: '1', name: 'First Steps', icon: '🎯', description: 'Complete your first lesson', locked: false, earnedAt: '2024-01-15' },
@@ -33,7 +34,7 @@ export const currentUser: User = {
     { id: '6', name: 'Quiz Master', icon: '🧠', description: 'Score 100% on 5 assessments', locked: true },
   ],
   dailyGoals: {
-    timeSpent: 18,
+    timeSpent: 14,
     timeGoal: 30,
     lessonsCompleted: 2,
     lessonsGoal: 3,
@@ -409,6 +410,12 @@ export const courses: Course[] = [
             { id: 'fq3', text: 'Neural Engine delivers how many TOPS?', options: ['16', '24', '35', '45'], correctAnswer: 2, explanation: '35 trillion operations per second.' },
           ], passingScore: 70, xpReward: 100, timeLimit: 180
         },
+        aiRoleplay: {
+          id: 'air-c1-1',
+          scenario: "Pitch the iPhone 16 Pro to a customer focused on gaming performance and Camera Control for content creation.",
+          title: "Hardware Pitch",
+          xpReward: 50
+        },
         completed: true, locked: false,
       },
       {
@@ -436,6 +443,12 @@ export const courses: Course[] = [
             { id: 'fq5', text: 'Which app uses Writing Tools?', options: ['Mail only', 'Notes only', 'All text fields', 'Safari only'], correctAnswer: 2, explanation: 'All apps with text input.' },
             { id: 'fq6', text: 'What powers Genmoji creation?', options: ['App Store', 'Neural Engine', 'iCloud', 'Siri'], correctAnswer: 1, explanation: 'Neural Engine generates Genmoji.' },
           ], passingScore: 70, xpReward: 150, timeLimit: 180
+        },
+        aiRoleplay: {
+          id: 'air-c1-2',
+          scenario: "Explain the benefits of ProMotion and Apple Intelligence to a business professional.",
+          title: "Intelligence Pitch",
+          xpReward: 75
         },
         completed: false, locked: false,
       },

@@ -6,6 +6,7 @@ export interface User {
   xp: number
   xpToNextLevel: number
   streak: number
+  dailyGoalsStreakClaimed?: boolean
   totalLessonsCompleted: number
   badges: Badge[]
   dailyGoals: DailyGoals
@@ -197,6 +198,7 @@ export interface Module {
   episodes: Episode[]
   miniGames: { afterEpisodeIndex: number; game: MiniGame }[]
   finalAssessment: Assessment
+  aiRoleplay?: { id: string; scenario: string; title: string; xpReward: number }
   completed: boolean
   locked: boolean
 }
@@ -289,6 +291,8 @@ export interface NextStepPlan {
   status: NextStepPlanStatus
   courseId?: string
   moduleId?: string
+  roleplayId?: string
+  scenario?: string
 }
 
 export interface UserSkillProfile {

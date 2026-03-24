@@ -11,13 +11,14 @@ interface FruitNinjaGameProps {
   game: MiniGame
   onComplete: (score: number, xpEarned: number) => void
   onShareScore?: (score: number, xpEarned: number) => void
+  continueLabel?: string
   onClose: () => void
 }
 
 const LOW_SCORE_THRESHOLD = 70
 const HIGH_SCORE_THRESHOLD = 80
 
-export function FruitNinjaGame({ game, onComplete, onShareScore, onClose }: FruitNinjaGameProps) {
+export function FruitNinjaGame({ game, onComplete, onShareScore, continueLabel = 'Continue Journey', onClose }: FruitNinjaGameProps) {
   const [qIndex, setQIndex] = useState(0)
   const [lives, setLives] = useState(3)
   const [score, setScore] = useState(0)
@@ -158,7 +159,7 @@ export function FruitNinjaGame({ game, onComplete, onShareScore, onClose }: Frui
             </p>
           )}
 
-          <div className={cn('gap-3', shouldOfferRetry && !shouldOfferShare ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
+          <div className={cn('gap-3', shouldOfferRetry !== shouldOfferShare ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
             {shouldOfferRetry && (
               <Button
                 variant="outline"
@@ -171,8 +172,10 @@ export function FruitNinjaGame({ game, onComplete, onShareScore, onClose }: Frui
             )}
             {shouldOfferShare && (
               <Button
-                variant="outline"
-                className="w-full"
+                className={cn(
+                  'w-full border border-emerald-300/25 bg-[linear-gradient(180deg,rgba(16,185,129,0.24)_0%,rgba(6,95,70,0.34)_100%)] font-semibold text-emerald-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(6,95,70,0.22)] hover:bg-[linear-gradient(180deg,rgba(16,185,129,0.3)_0%,rgba(6,95,70,0.42)_100%)]',
+                  !shouldOfferRetry && 'max-w-[240px]',
+                )}
                 disabled={shared}
                 onClick={() => {
                   onShareScore?.(percent, xpEarned)
@@ -185,7 +188,7 @@ export function FruitNinjaGame({ game, onComplete, onShareScore, onClose }: Frui
           </div>
 
           <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-600" onClick={() => onComplete(percent, xpEarned)}>
-            Continue Journey
+            {continueLabel}
           </Button>
         </motion.div>
       </div>

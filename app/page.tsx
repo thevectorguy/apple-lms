@@ -11,6 +11,7 @@ import { CoursesPage } from '@/components/lms/courses-page'
 import { SkillRadar } from '@/components/lms/skill-radar'
 import { PracticeScreen } from '@/components/lms/practice-screen'
 import { AIPracticeScreen } from '@/components/lms/ai-practice-screen'
+import { ShareCelebrationCard, type ShareCardData } from '@/components/lms/share-celebration-card'
 import {
   currentUser, stories, allBadges, discussions, peerChallenges,
   sharedAchievements, courses, userSkillProfile,
@@ -25,7 +26,11 @@ import { getLeague, LEAGUE_INFO } from '@/lib/types'
 import type {
   CompetencyEvent,
   CompetencyEventType,
+  Assessment,
   Course,
+  DailyGoals as DailyGoalsState,
+  Episode,
+  Module,
   NextStepPlan,
   SkillCategory,
 } from '@/lib/types'
@@ -41,11 +46,8 @@ type CompetencyEventInput = {
 type ShareComposerDraft = {
   id: string
   message: string
-  gameTitle: string
-  courseTitle: string
-  score: number
-  xpEarned: number
-  courseThumbnail: string
+  title: string
+  card: ShareCardData
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,6 +176,196 @@ function applyCompetencyEvent(profile: typeof userSkillProfile, event: Competenc
   }
 }
 
+function parseDurationToMinutes(duration: string) {
+  const timestampMatch = duration.match(/^(\d+):(\d+)$/)
+  if (timestampMatch) {
+    const minutes = Number(timestampMatch[1])
+    const seconds = Number(timestampMatch[2])
+    return Math.max(1, Math.ceil(((minutes * 60) + seconds) / 60))
+  }
+
+  const numericMinutes = Number.parseInt(duration, 10)
+  return Number.isFinite(numericMinutes) ? Math.max(1, numericMinutes) : 5
+}
+
+function areAllDailyGoalsComplete(dailyGoals: DailyGoalsState) {
+  return (
+    dailyGoals.lessonsCompleted >= dailyGoals.lessonsGoal &&
+    dailyGoals.xpEarned >= dailyGoals.xpGoal &&
+    dailyGoals.timeSpent >= dailyGoals.timeGoal
+  )
+}
+
+function getDailyGoalStreakReward<T extends { streak: number; dailyGoalsStreakClaimed?: boolean }>(
+  user: T,
+  dailyGoals: DailyGoalsState,
+) {
+  const shouldAwardStreak = areAllDailyGoalsComplete(dailyGoals) && !user.dailyGoalsStreakClaimed
+
+  return {
+    streak: shouldAwardStreak ? user.streak + 1 : user.streak,
+    dailyGoalsStreakClaimed: user.dailyGoalsStreakClaimed || shouldAwardStreak,
+  }
+}
+
+function buildInitialCourseProgress(allCourses: Course[]) {
+  const completedEpisodes = new Set<string>()
+  const completedGames = new Set<string>()
+  const completedAssessments = new Set<string>()
+  const completedModules = new Set<string>()
+  const completedRoleplays = new Set<string>()
+
+  allCourses.forEach(course => {
+    const courseEpisodes = course.modules?.length ? course.modules.flatMap(module => module.episodes) : course.episodes
+    courseEpisodes.forEach(episode => {
+      if (episode.completed) completedEpisodes.add(episode.id)
+    })
+
+    course.modules?.forEach(courseModule => {
+      if (courseModule.completed) {
+        completedModules.add(courseModule.id)
+        courseModule.episodes.forEach(episode => completedEpisodes.add(episode.id))
+        courseModule.miniGames.forEach(({ game }) => completedGames.add(game.id))
+        completedAssessments.add(courseModule.finalAssessment.id)
+        if (courseModule.aiRoleplay) completedRoleplays.add(courseModule.aiRoleplay.id)
+      }
+    })
+  })
+
+  return {
+    completedEpisodes,
+    completedGames,
+    completedAssessments,
+    completedModules,
+    completedRoleplays,
+  }
+}
+
+const COURSE_PROGRESS_STORAGE_KEY = 'lms-course-progress-v1'
+
+type CourseProgressState = ReturnType<typeof buildInitialCourseProgress>
+
+type StoredCourseProgress = {
+  completedEpisodes?: string[]
+  completedGames?: string[]
+  completedAssessments?: string[]
+  completedModules?: string[]
+  completedRoleplays?: string[]
+}
+
+function readCourseProgressFromStorage(fallback: CourseProgressState): CourseProgressState {
+  if (typeof window === 'undefined') return fallback
+
+  try {
+    const storedValue = window.localStorage.getItem(COURSE_PROGRESS_STORAGE_KEY)
+    if (!storedValue) return fallback
+
+    const parsed = JSON.parse(storedValue) as StoredCourseProgress
+
+    return {
+      completedEpisodes: new Set(Array.isArray(parsed.completedEpisodes) ? parsed.completedEpisodes : []),
+      completedGames: new Set(Array.isArray(parsed.completedGames) ? parsed.completedGames : []),
+      completedAssessments: new Set(Array.isArray(parsed.completedAssessments) ? parsed.completedAssessments : []),
+      completedModules: new Set(Array.isArray(parsed.completedModules) ? parsed.completedModules : []),
+      completedRoleplays: new Set(Array.isArray(parsed.completedRoleplays) ? parsed.completedRoleplays : []),
+    }
+  } catch {
+    return fallback
+  }
+}
+
+function writeCourseProgressToStorage(progress: CourseProgressState) {
+  if (typeof window === 'undefined') return
+
+  const serializedProgress: StoredCourseProgress = {
+    completedEpisodes: Array.from(progress.completedEpisodes),
+    completedGames: Array.from(progress.completedGames),
+    completedAssessments: Array.from(progress.completedAssessments),
+    completedModules: Array.from(progress.completedModules),
+    completedRoleplays: Array.from(progress.completedRoleplays),
+  }
+
+  window.localStorage.setItem(COURSE_PROGRESS_STORAGE_KEY, JSON.stringify(serializedProgress))
+}
+
+function createGameShareCard(payload: {
+  gameTitle: string
+  courseTitle: string
+  score: number
+  xpEarned: number
+}): ShareCardData {
+  return {
+    kind: 'game_score',
+    icon: payload.score >= 95 ? '⚡' : '🎮',
+    eyebrow: 'Community Share',
+    achievement: payload.gameTitle,
+    title: `${payload.score}% run locked`,
+    subtitle: payload.courseTitle,
+    primaryStat: {
+      label: 'Score',
+      value: `${payload.score}%`,
+    },
+    secondaryStat: {
+      label: 'XP Earned',
+      value: `+${payload.xpEarned}`,
+    },
+    footer: payload.score >= 95
+      ? 'Elite round. This one deserves a spotlight in the feed.'
+      : 'Strong checkpoint cleared on the way through the course.',
+  }
+}
+
+function createAssessmentShareCard(payload: {
+  assessment: Assessment
+  courseTitle: string
+  score: number
+}): ShareCardData {
+  const badgeName = payload.assessment.badgeReward?.name
+
+  return {
+    kind: 'assessment_pass',
+    icon: payload.assessment.badgeReward?.icon ?? '🏆',
+    eyebrow: badgeName ? 'Badge Unlocked' : 'Assessment Cleared',
+    achievement: payload.assessment.title,
+    title: badgeName ? `${badgeName} unlocked` : `${payload.score}% passed`,
+    subtitle: payload.courseTitle,
+    primaryStat: {
+      label: 'Score',
+      value: `${payload.score}%`,
+    },
+    secondaryStat: {
+      label: 'XP Earned',
+      value: `+${payload.assessment.xpReward}`,
+    },
+    footer: badgeName
+      ? `Passed the checkpoint and earned the ${badgeName} badge.`
+      : 'Checkpoint passed and the next part of the journey is open.',
+  }
+}
+
+function createModuleRewardShareCard(payload: {
+  module: Module
+  courseTitle: string
+}): ShareCardData {
+  return {
+    kind: 'module_reward',
+    icon: '🏅',
+    eyebrow: 'Module Reward',
+    achievement: `Level ${payload.module.level} Finisher`,
+    title: payload.module.title,
+    subtitle: payload.courseTitle,
+    primaryStat: {
+      label: 'Level',
+      value: `${payload.module.level}`,
+    },
+    secondaryStat: {
+      label: 'Status',
+      value: 'Unlocked',
+    },
+    footer: 'Journey checkpoint secured and stamped to your profile.',
+  }
+}
+
 function PracticePanel({
   profile,
   onSkillUpdate,
@@ -287,13 +479,13 @@ function ShareComposerModal({
     setMessage(draft.message)
   }, [draft])
 
-  return (
-    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center">
-      <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(17,24,39,0.98)_100%)] text-white shadow-[0_30px_120px_rgba(2,6,23,0.55)]">
+	  return (
+	    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center">
+	      <div className="max-h-[calc(100svh-2rem)] w-full max-w-lg overflow-y-auto rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(17,24,39,0.98)_100%)] text-white shadow-[0_30px_120px_rgba(2,6,23,0.55)]">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-300/80">Share to community</p>
-            <h3 className="mt-1 text-xl font-black">Your score post is ready</h3>
+            <h3 className="mt-1 text-xl font-black">{draft.title}</h3>
           </div>
           <button
             onClick={onClose}
@@ -303,32 +495,8 @@ function ShareComposerModal({
           </button>
         </div>
 
-        <div className="space-y-4 px-5 py-5">
-          <div className="overflow-hidden rounded-[1.75rem] border border-cyan-300/15 bg-slate-900/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div className="relative h-44 overflow-hidden">
-              <img
-                src={draft.courseThumbnail || '/placeholder.svg'}
-                alt={draft.courseTitle}
-                className="h-full w-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
-              <div className="absolute inset-x-0 top-0 flex items-center justify-between px-4 py-3">
-                <div className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/80 backdrop-blur-sm">
-                  {draft.gameTitle}
-                </div>
-                <div className="rounded-full bg-emerald-400 px-3 py-1 text-sm font-black text-slate-950 shadow-lg">
-                  {draft.score}%
-                </div>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-300/80">Attached preview</p>
-                <h4 className="mt-1 text-2xl font-black">{draft.courseTitle}</h4>
-                <div className="mt-3 inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white/85 backdrop-blur-sm">
-                  +{draft.xpEarned} XP locked in
-                </div>
-              </div>
-            </div>
-          </div>
+	        <div className="space-y-4 px-5 py-5">
+	          <ShareCelebrationCard card={draft.card} compact className="mx-auto max-w-[25rem]" />
 
           <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/55">Caption</p>
@@ -369,14 +537,18 @@ function ShareComposerModal({
 export default function LMSPage() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [practiceView, setPracticeView] = useState<'landing' | 'ai-coach'>('landing')
+  const [aiCoachAutoStartFromPlan, setAiCoachAutoStartFromPlan] = useState(false)
   const [user, setUser] = useState(currentUser)
   const [isDark, setIsDark] = useState(false)
   const [skillProfile, setSkillProfile] = useState(userSkillProfile)
+  const [courseProgress, setCourseProgress] = useState(() => buildInitialCourseProgress(courses))
+  const [courseProgressHydrated, setCourseProgressHydrated] = useState(false)
   const [communityPosts, setCommunityPosts] = useState<CommunityFeedPost[]>([])
   const [shareDraft, setShareDraft] = useState<ShareComposerDraft | null>(null)
   // For "Continue Learning" direct play
   const [autoPlayCourseId, setAutoPlayCourseId] = useState<string | null>(null)
   const [openCourseId, setOpenCourseId] = useState<string | null>(null)
+  const [resumeRewardModuleId, setResumeRewardModuleId] = useState<string | null>(null)
   const [xpToast, setXpToast] = useState<{ id: number; xp: number; label?: string } | null>(null)
   const currentLeague = getLeague(user.xp)
   const currentLeagueInfo = LEAGUE_INFO[currentLeague]
@@ -387,7 +559,17 @@ export default function LMSPage() {
     const shouldBeDark = stored === 'dark' || (!stored && prefersDark)
     setIsDark(shouldBeDark)
     document.documentElement.classList.toggle('dark', shouldBeDark)
-  }, [])
+  }, [courses])
+
+  useEffect(() => {
+    setCourseProgress(readCourseProgressFromStorage(buildInitialCourseProgress(courses)))
+    setCourseProgressHydrated(true)
+  }, [courses])
+
+  useEffect(() => {
+    if (!courseProgressHydrated) return
+    writeCourseProgressToStorage(courseProgress)
+  }, [courseProgress, courseProgressHydrated])
 
   const toggleTheme = () => {
     const newTheme = !isDark
@@ -424,75 +606,150 @@ export default function LMSPage() {
     })
 
     const xpGain = Math.round(score * (eventType === 'ai_practice' ? 0.6 : 0.5))
-    setUser(prev => ({
-      ...prev,
-      xp: prev.xp + xpGain,
-      dailyGoals: {
+    setUser(prev => {
+      const dailyGoals = {
         ...prev.dailyGoals,
         xpEarned: prev.dailyGoals.xpEarned + xpGain,
-      },
-    }))
+      }
+      const streakReward = getDailyGoalStreakReward(prev, dailyGoals)
+
+      return {
+        ...prev,
+        xp: prev.xp + xpGain,
+        dailyGoals,
+        ...streakReward,
+      }
+    })
     triggerXPToast(xpGain, eventType === 'ai_practice' ? 'from AI practice' : 'from assessment')
   }, [activeTab, handleCompetencyEvent, triggerXPToast])
 
   const handleXPGain = useCallback((xp: number, label = 'from practice') => {
-    setUser(prev => ({
-      ...prev,
-      xp: prev.xp + xp,
-      dailyGoals: {
+    setUser(prev => {
+      const dailyGoals = {
         ...prev.dailyGoals,
         xpEarned: prev.dailyGoals.xpEarned + xp,
-      },
-    }))
+      }
+      const streakReward = getDailyGoalStreakReward(prev, dailyGoals)
+
+      return {
+        ...prev,
+        xp: prev.xp + xp,
+        dailyGoals,
+        ...streakReward,
+      }
+    })
     triggerXPToast(xp, label)
   }, [triggerXPToast])
 
-  const handleLessonComplete = useCallback((xp: number) => {
-    setUser(prev => ({
-      ...prev,
-      xp: prev.xp + xp,
-      totalLessonsCompleted: prev.totalLessonsCompleted + 1,
-      dailyGoals: {
+  const handleLessonComplete = useCallback((episode: Episode) => {
+    const xp = episode.xp || 50
+    const minutesSpent = parseDurationToMinutes(episode.duration)
+
+    setUser(prev => {
+      const dailyGoals = {
         ...prev.dailyGoals,
         lessonsCompleted: prev.dailyGoals.lessonsCompleted + 1,
         xpEarned: prev.dailyGoals.xpEarned + xp,
-      },
-    }))
+        timeSpent: prev.dailyGoals.timeSpent + minutesSpent,
+      }
+      const streakReward = getDailyGoalStreakReward(prev, dailyGoals)
+
+      return {
+        ...prev,
+        xp: prev.xp + xp,
+        totalLessonsCompleted: prev.totalLessonsCompleted + 1,
+        dailyGoals,
+        ...streakReward,
+      }
+    })
     triggerXPToast(xp, 'lesson complete!')
   }, [triggerXPToast])
 
   // "Continue Learning" play button → switch to Courses tab AND auto-open the course
   const handleContinueLearning = useCallback((courseId: string) => {
     setOpenCourseId(null)
+    setResumeRewardModuleId(null)
     setAutoPlayCourseId(courseId)
     setActiveTab('courses')
   }, [])
 
   const handleOpenCourseJourney = useCallback((courseId: string) => {
     setAutoPlayCourseId(null)
+    setResumeRewardModuleId(null)
     setOpenCourseId(courseId)
     setActiveTab('courses')
   }, [])
 
-  const handlePracticeFromCourses = useCallback(() => {
+  const handleReturnToCourseReward = useCallback((courseId: string, roleplayId: string) => {
+    const course = courses.find(item => item.id === courseId)
+    const moduleId = course?.modules?.find(module => module.aiRoleplay?.id === roleplayId)?.id ?? null
+
+    setAutoPlayCourseId(null)
+    setResumeRewardModuleId(moduleId)
+    setOpenCourseId(courseId)
+    setActiveTab('courses')
+  }, [])
+
+  const handlePracticeFromCourses = useCallback((scenario?: string, roleplayId?: string, courseId?: string) => {
     setAutoPlayCourseId(null)
     setOpenCourseId(null)
+    setAiCoachAutoStartFromPlan(true)
+    const courseSkill = courseId ? courses.find(course => course.id === courseId)?.skillCategory : undefined
     setSkillProfile(prev => ({
       ...prev,
       nextStepPlan: {
         type: 'ai_practice',
-        skillCategory: prev.weakAreas[0] ?? 'technical',
+        skillCategory: courseSkill ?? prev.weakAreas[0] ?? 'technical',
         title: 'AI focus session',
         status: 'selected',
+        courseId,
+        roleplayId,
+        scenario,
       },
     }))
     setPracticeView('ai-coach')
     setActiveTab('practice')
   }, [])
 
+  const handleCourseProgressChange = useCallback((progress: {
+    completedEpisodes: Set<string>
+    completedGames: Set<string>
+    completedAssessments: Set<string>
+    completedModules: Set<string>
+    completedRoleplays: Set<string>
+  }) => {
+    setCourseProgress({
+      completedEpisodes: new Set(progress.completedEpisodes),
+      completedGames: new Set(progress.completedGames),
+      completedAssessments: new Set(progress.completedAssessments),
+      completedModules: new Set(progress.completedModules),
+      completedRoleplays: new Set(progress.completedRoleplays),
+    })
+  }, [])
+
+  const handleRoleplayComplete = useCallback((roleplayId: string) => {
+    setCourseProgress(prev => ({
+      ...prev,
+      completedRoleplays: new Set(prev.completedRoleplays).add(roleplayId),
+    }))
+
+    setSkillProfile(prev => ({
+      ...prev,
+      nextStepPlan: prev.nextStepPlan?.roleplayId === roleplayId
+        ? {
+            ...prev.nextStepPlan,
+            status: 'completed',
+            roleplayId: undefined,
+            scenario: undefined,
+          }
+        : prev.nextStepPlan,
+    }))
+  }, [])
+
   const openAIPracticeCoach = useCallback(() => {
     setAutoPlayCourseId(null)
     setOpenCourseId(null)
+    setAiCoachAutoStartFromPlan(false)
     setPracticeView('ai-coach')
     setActiveTab('practice')
   }, [])
@@ -502,7 +759,6 @@ export default function LMSPage() {
     courseTitle: string
     score: number
     xpEarned: number
-    courseThumbnail: string
   }) => {
     const starterMessage = payload.score >= 95
       ? `Just landed a ${payload.score}% run in ${payload.gameTitle}. ${payload.courseTitle} is starting to feel second nature.`
@@ -512,52 +768,81 @@ export default function LMSPage() {
 
     setShareDraft({
       id: `draft-${Date.now()}`,
+      title: 'Your share card is ready',
       message: starterMessage,
-      gameTitle: payload.gameTitle,
-      courseTitle: payload.courseTitle,
-      score: payload.score,
-      xpEarned: payload.xpEarned,
-      courseThumbnail: payload.courseThumbnail,
+      card: createGameShareCard(payload),
     })
-  }, [user.avatar, user.level, user.name])
+  }, [])
+
+  const handleShareAssessmentResult = useCallback((payload: {
+    assessment: Assessment
+    courseTitle: string
+    score: number
+  }) => {
+    const badgeName = payload.assessment.badgeReward?.name
+    const starterMessage = badgeName
+      ? `Passed ${payload.assessment.title} with ${payload.score}% and unlocked the ${badgeName} badge in ${payload.courseTitle}.`
+      : payload.score >= 95
+        ? `Scored ${payload.score}% on ${payload.assessment.title}. ${payload.courseTitle} is really clicking now.`
+        : `Cleared ${payload.assessment.title} with ${payload.score}% and kept the momentum going in ${payload.courseTitle}.`
+
+    setShareDraft({
+      id: `draft-${Date.now()}`,
+      title: 'Your achievement card is ready',
+      message: starterMessage,
+      card: createAssessmentShareCard(payload),
+    })
+  }, [])
+
+  const handleShareModuleReward = useCallback((payload: {
+    module: Module
+    courseTitle: string
+  }) => {
+    const starterMessage = `Just closed out Level ${payload.module.level} in ${payload.courseTitle} and unlocked the ${payload.module.title} Finisher reward.`
+
+    setShareDraft({
+      id: `draft-${Date.now()}`,
+      title: 'Your reward card is ready',
+      message: starterMessage,
+      card: createModuleRewardShareCard(payload),
+    })
+  }, [])
 
   const handlePostShareDraft = useCallback((message: string) => {
-    setShareDraft(prevDraft => {
-      if (!prevDraft) return prevDraft
+    if (!shareDraft) return
 
-      setCommunityPosts(prev => [
-        {
-          id: `score-${Date.now()}`,
-          author: {
-            name: user.name,
-            avatar: user.avatar || '/placeholder.svg',
-            level: user.level,
-          },
-          type: 'milestone',
-          content: message,
-          timestamp: 'Just now',
-          likes: 0,
-          comments: 0,
-          isLiked: false,
-          scoreShare: {
-            gameTitle: prevDraft.gameTitle,
-            courseTitle: prevDraft.courseTitle,
-            score: prevDraft.score,
-            xpEarned: prevDraft.xpEarned,
-          },
-        },
-        ...prev,
-      ])
+    const nextPost: CommunityFeedPost = {
+      id: `score-${Date.now()}`,
+      author: {
+        name: user.name,
+        avatar: user.avatar || '/placeholder.svg',
+        level: user.level,
+      },
+      type: 'milestone',
+      content: message,
+      timestamp: 'Just now',
+      likes: 0,
+      comments: 0,
+      isLiked: false,
+      canDelete: true,
+      shareCard: shareDraft.card,
+    }
 
-      return null
-    })
-  }, [user.avatar, user.level, user.name])
+    setCommunityPosts(prev => [nextPost, ...prev])
+    setShareDraft(null)
+    setActiveTab('community')
+  }, [shareDraft, user.avatar, user.level, user.name])
+
+  const handleDeleteCommunityPost = useCallback((postId: string) => {
+    setCommunityPosts(prev => prev.filter(post => post.id !== postId))
+  }, [])
 
   const handleTabChange = useCallback((tab: Tab) => {
     // Clear auto-play when user manually navigates
     if (tab !== 'courses') {
       setAutoPlayCourseId(null)
       setOpenCourseId(null)
+      setResumeRewardModuleId(null)
     }
     if (tab !== 'practice') setPracticeView('landing')
     if (tab === 'practice') setPracticeView('landing')
@@ -576,9 +861,9 @@ export default function LMSPage() {
       {shareDraft && (
         <ShareComposerModal
           draft={shareDraft}
-          onClose={() => setShareDraft(null)}
-          onPost={handlePostShareDraft}
-        />
+            onClose={() => setShareDraft(null)}
+            onPost={handlePostShareDraft}
+          />
       )}
 
       {/* Header */}
@@ -625,48 +910,45 @@ export default function LMSPage() {
       {/* ── Home Tab ── */}
       {activeTab === 'home' && (
         <div className="space-y-6 px-4 py-4">
-          <div>
-            <h1 className="text-2xl font-bold">Hey, {user.name.split(' ')[0]}!</h1>
-            <p className="text-muted-foreground">Ready to level up today?</p>
-          </div>
+          <div className="grid gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-center">
+            <div>
+              <h1 className="text-2xl font-bold">Hey, {user.name.split(' ')[0]}!</h1>
+              <p className="text-muted-foreground">Ready to level up today?</p>
+            </div>
 
-          {/* Streak Card */}
-          <section className="glass-card rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-                  <Flame className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Current Streak</p>
-                  <p className="text-2xl font-bold">{user.streak} days</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Keep it up!</p>
-                <p className="text-primary font-bold">+50 XP daily</p>
-              </div>
-            </div>
-            <div className="flex justify-between gap-2">
-              {['T', 'F', 'S', 'S', 'M', 'T', 'W'].map((day, idx) => {
-                const isActive = idx < user.streak % 7 || user.streak >= 7
-                return (
-                  <div
-                    key={idx}
-                    className={cn(
-                      'flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all',
-                      isActive ? 'bg-primary' : 'bg-secondary',
-                    )}
-                  >
-                    <Flame className={cn('w-4 h-4', isActive ? 'text-primary-foreground' : 'text-muted-foreground')} />
-                    <span className={cn('text-xs font-medium', isActive ? 'text-primary-foreground' : 'text-muted-foreground')}>
-                      {day}
-                    </span>
+            <section className="glass-card w-full rounded-2xl px-4 py-3">
+              <div className="grid gap-3 sm:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] sm:items-center">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+                    <Flame className="h-5 w-5 text-primary-foreground" />
                   </div>
-                )
-              })}
-            </div>
-          </section>
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Current Streak</p>
+                    <p className="text-lg font-bold leading-tight">{user.streak} day streak</p>
+                    <p className="text-xs text-muted-foreground">Keep it up. <span className="font-semibold text-primary">+50 XP daily</span></p>
+                  </div>
+                </div>
+
+                <div className="grid w-full grid-cols-7 gap-1.5">
+                  {['T', 'F', 'S', 'S', 'M', 'T', 'W'].map((day, idx) => {
+                    const isActive = idx < Math.min(user.streak, 7)
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          'flex h-10 min-w-0 flex-col items-center justify-center rounded-xl transition-all',
+                          isActive ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground',
+                        )}
+                      >
+                        <Flame className="h-3.5 w-3.5" />
+                        <span className="text-[10px] font-semibold leading-none">{day}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </section>
+          </div>
 
           {/* Daily Tips */}
           <section>
@@ -840,14 +1122,19 @@ export default function LMSPage() {
         <div className="px-4 py-4">
           <CoursesPage
             courses={courses}
+            progressState={courseProgress}
+            onProgressStateChange={handleCourseProgressChange}
             onSkillUpdate={handleSkillUpdate}
             onCompetencyEvent={handleCompetencyEvent}
             autoPlayCourseId={autoPlayCourseId}
             openCourseId={openCourseId}
+            resumeRewardModuleId={resumeRewardModuleId}
             onLessonComplete={handleLessonComplete}
             onXPGain={handleXPGain}
             onPracticeWithAI={handlePracticeFromCourses}
             onShareGameScore={handleShareGameScore}
+            onShareAssessmentResult={handleShareAssessmentResult}
+            onShareModuleReward={handleShareModuleReward}
           />
         </div>
       )}
@@ -856,9 +1143,12 @@ export default function LMSPage() {
       {activeTab === 'practice' && (
         practiceView === 'ai-coach' ? (
           <AIPracticeScreen
+            autoStartFromPlan={aiCoachAutoStartFromPlan}
             profile={skillProfile}
             courses={courses}
             onSkillUpdate={handleSkillUpdate}
+            onRoleplayComplete={handleRoleplayComplete}
+            onReturnToCourseReward={handleReturnToCourseReward}
             onOpenCourse={handleOpenCourseJourney}
             onBack={() => setPracticeView('landing')}
           />
@@ -876,9 +1166,15 @@ export default function LMSPage() {
       {/* ── Community Tab ── */}
       {activeTab === 'community' && (
         <div className="px-4 py-4">
-          <Community user={user} discussions={discussions} achievements={sharedAchievements} posts={communityPosts} />
-        </div>
-      )}
+	          <Community
+	            user={user}
+	            discussions={discussions}
+	            achievements={sharedAchievements}
+	            posts={communityPosts}
+	            onDeletePost={handleDeleteCommunityPost}
+	          />
+	        </div>
+	      )}
 
       {/* ── Profile Tab ── */}
       {activeTab === 'profile' && (

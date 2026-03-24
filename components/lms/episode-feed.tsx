@@ -22,6 +22,7 @@ type FeedItem =
   | { type: 'episode'; episode: Episode; index: number; episodeNumber: number; moduleEpisodeNumber: number; module?: Module }
   | { type: 'assessment'; assessment: Assessment; afterEpisode: Episode }
   | { type: 'game'; game: MiniGame; afterEpisode: Episode; module: Module }
+  | { type: 'roleplay'; roleplay: NonNullable<Module['aiRoleplay']>; afterAssessment: Assessment; module: Module }
   | { type: 'reward'; module: Module; nextEpisodeId?: string }
 
 interface EpisodeFeedProps {
@@ -31,13 +32,18 @@ interface EpisodeFeedProps {
   onAssessmentComplete: (passed: boolean, score: number, assessment?: Assessment) => void
   onGameComplete?: (game: MiniGame, score: number, xpEarned: number) => void
   onGameShare?: (game: MiniGame, score: number, xpEarned: number) => void
-  onPracticeWithAI?: () => void
+  onAssessmentShare?: (assessment: Assessment, score: number) => void
+  onModuleRewardShare?: (module: Module) => void
+  onPracticeWithAI?: (scenario: string, id: string) => void
   completedEpisodes: Set<string>
   completedGames?: Set<string>
   completedAssessments?: Set<string>
+  completedRoleplays?: Set<string>
   userStreak?: number
   userXP?: number
   initialEpisodeId?: string
+  initialAssessmentId?: string
+  initialRewardModuleId?: string
   disableAssessments?: boolean
 }
 
@@ -85,6 +91,15 @@ function buildJourneyFeedItems(course: Course): FeedItem[] {
       assessment: module.finalAssessment,
       afterEpisode: module.episodes[module.episodes.length - 1],
     })
+
+    if (module.aiRoleplay) {
+      items.push({
+        type: 'roleplay',
+        roleplay: module.aiRoleplay,
+        afterAssessment: module.finalAssessment,
+        module,
+      })
+    }
 
     items.push({
       type: 'reward',
@@ -135,11 +150,13 @@ function isModuleComplete(
   completedEpisodes: Set<string>,
   completedGames: Set<string>,
   completedAssessments: Set<string>,
+  completedRoleplays: Set<string>,
 ) {
   const episodesDone = module.episodes.every(episode => episode.completed || completedEpisodes.has(episode.id))
   const gamesDone = module.miniGames.every(({ game }) => completedGames.has(game.id))
   const assessmentDone = completedAssessments.has(module.finalAssessment.id)
-  return episodesDone && gamesDone && assessmentDone
+  const roleplayDone = !module.aiRoleplay || completedRoleplays.has(module.aiRoleplay.id)
+  return episodesDone && gamesDone && assessmentDone && roleplayDone
 }
 
 function getGameTheme(game: MiniGame) {
@@ -175,7 +192,23 @@ function getGameTheme(game: MiniGame) {
   }
 }
 
-function getInitialFeedIndex(feedItems: FeedItem[], initialEpisodeId?: string) {
+function getRoleplayTheme() {
+  return {
+    bgClass: 'bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.26),_transparent_30%),radial-gradient(circle_at_bottom,_rgba(59,130,246,0.28),_transparent_36%),linear-gradient(180deg,#1e1b4b_0%,#0f172a_48%,#020617_100%)]',
+    buttonClass: 'from-pink-400 via-fuchsia-500 to-indigo-500 text-white',
+    pillClass: 'border-pink-300/25 bg-pink-400/15 text-pink-100',
+  }
+}
+
+function getInitialFeedIndex(feedItems: FeedItem[], initialEpisodeId?: string, initialAssessmentId?: string) {
+  if (initialAssessmentId) {
+    const assessmentIndex = feedItems.findIndex(
+      item => item.type === 'assessment' && item.assessment.id === initialAssessmentId,
+    )
+
+    if (assessmentIndex >= 0) return assessmentIndex
+  }
+
   if (!initialEpisodeId) return 0
 
   const episodeIndex = feedItems.findIndex(
@@ -185,16 +218,49 @@ function getInitialFeedIndex(feedItems: FeedItem[], initialEpisodeId?: string) {
   return episodeIndex >= 0 ? episodeIndex : 0
 }
 
+function getInitialRewardFeedIndex(feedItems: FeedItem[], initialRewardModuleId?: string) {
+  if (!initialRewardModuleId) return -1
+
+  return feedItems.findIndex(
+    item => item.type === 'reward' && item.module.id === initialRewardModuleId,
+  )
+}
+
+function getStartingFeedIndex(
+  feedItems: FeedItem[],
+  initialEpisodeId?: string,
+  initialAssessmentId?: string,
+  initialRewardModuleId?: string,
+) {
+  if (initialEpisodeId || initialAssessmentId) {
+    return getInitialFeedIndex(feedItems, initialEpisodeId, initialAssessmentId)
+  }
+
+  const rewardIndex = getInitialRewardFeedIndex(feedItems, initialRewardModuleId)
+  return rewardIndex >= 0 ? rewardIndex : getInitialFeedIndex(feedItems, initialEpisodeId, initialAssessmentId)
+}
+
+function getPreviousFeedIndex(feedItems: FeedItem[], currentIndex: number, currentItem?: FeedItem) {
+  let nextIndex = currentIndex - 1
+
+  while (nextIndex >= 0 && feedItems[nextIndex]?.type === 'reward' && currentItem?.type !== 'reward') {
+    nextIndex -= 1
+  }
+
+  return Math.max(nextIndex, 0)
+}
+
 function getFeedLabel(item: FeedItem | undefined, totalEpisodes: number) {
   if (!item) return `Episode 1 / ${totalEpisodes}`
   if (item.type === 'episode') {
     if (item.module) {
       return `Episode ${item.moduleEpisodeNumber} / ${item.module.episodes.length}`
     }
-    return `Episode ${item.episodeNumber} / ${totalEpisodes}`
+  return `Episode ${item.episodeNumber} / ${totalEpisodes}`
   }
   if (item.type === 'game') return 'Challenge'
   if (item.type === 'assessment') return 'Checkpoint'
+  if (item.type === 'roleplay') return 'AI Roleplay'
   return `Level ${item.module.level} Reward`
 }
 
@@ -208,20 +274,28 @@ export function EpisodeFeed({
   onAssessmentComplete,
   onGameComplete,
   onGameShare,
+  onAssessmentShare,
+  onModuleRewardShare,
   onPracticeWithAI,
   completedEpisodes,
   completedGames,
   completedAssessments,
+  completedRoleplays,
   userStreak = 7,
   userXP = 2450,
   initialEpisodeId,
+  initialAssessmentId,
+  initialRewardModuleId,
   disableAssessments = false,
 }: EpisodeFeedProps) {
   const feedItems = useMemo(() => buildFeedItems(course, disableAssessments), [course, disableAssessments])
   const courseEpisodes = useMemo(() => getCourseEpisodes(course), [course])
   const completedGameSet = completedGames ?? new Set<string>()
   const completedAssessmentSet = completedAssessments ?? new Set<string>()
-  const [currentIndex, setCurrentIndex] = useState(() => getInitialFeedIndex(feedItems, initialEpisodeId))
+  const completedRoleplaySet = completedRoleplays ?? new Set<string>()
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    return getStartingFeedIndex(feedItems, initialEpisodeId, initialAssessmentId, initialRewardModuleId)
+  })
   const [isPlaying, setIsPlaying] = useState(true)
   const [likedEps, setLikedEps] = useState<Set<string>>(new Set())
   const [savedEps, setSavedEps] = useState<Set<string>>(new Set())
@@ -229,9 +303,9 @@ export function EpisodeFeed({
   const [progress, setProgress] = useState(0)
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
   const [activeGame, setActiveGame] = useState<MiniGame | null>(null)
-  const [assessmentOutcome, setAssessmentOutcome] = useState<{ passed: boolean; score: number; assessmentId: string } | null>(null)
   const [playbackFeedback, setPlaybackFeedback] = useState<'play' | 'pause' | null>(null)
   const completedEpisodeRef = useRef<Set<string>>(new Set())
+  const assessmentOutcomeRef = useRef<{ passed: boolean; score: number; assessmentId: string } | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const y = useMotionValue(0)
@@ -241,8 +315,8 @@ export function EpisodeFeed({
   const currentItem = feedItems[currentIndex]
 
   useEffect(() => {
-    setCurrentIndex(getInitialFeedIndex(feedItems, initialEpisodeId))
-  }, [initialEpisodeId, feedItems])
+    setCurrentIndex(getStartingFeedIndex(feedItems, initialEpisodeId, initialAssessmentId, initialRewardModuleId))
+  }, [initialAssessmentId, initialEpisodeId, initialRewardModuleId, feedItems])
 
   useEffect(() => {
     completedEpisodeRef.current = new Set(completedEpisodes)
@@ -263,8 +337,12 @@ export function EpisodeFeed({
       return completedAssessmentSet.has(item.assessment.id)
     }
 
+    if (item.type === 'roleplay') {
+      return completedRoleplaySet.has(item.roleplay.id)
+    }
+
     return true
-  }, [completedAssessmentSet, completedEpisodes, completedGameSet, progress])
+  }, [completedAssessmentSet, completedEpisodes, completedGameSet, completedRoleplaySet, progress])
 
   // ── Navigation ────────────
   const goNext = useCallback(() => {
@@ -285,14 +363,18 @@ export function EpisodeFeed({
       return
     }
 
+    if (currentItem.type === 'roleplay' && !completedRoleplaySet.has(currentItem.roleplay.id)) {
+      return
+    }
+
     setCurrentIndex(prev => Math.min(prev + 1, feedItems.length - 1))
     y.set(0)
-  }, [completedAssessmentSet, completedGameSet, currentItem, feedItems.length, isFeedItemCompleted, y])
+  }, [completedAssessmentSet, completedGameSet, completedRoleplaySet, currentItem, feedItems.length, isFeedItemCompleted, y])
 
   const goPrev = useCallback(() => {
-    setCurrentIndex(prev => Math.max(prev - 1, 0))
+    setCurrentIndex(prev => getPreviousFeedIndex(feedItems, prev, feedItems[prev]))
     y.set(0)
-  }, [y])
+  }, [feedItems, y])
 
   // Wheel handler (trackpad/scroll)
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -334,7 +416,7 @@ export function EpisodeFeed({
 
   // Reset progress when item changes
   useEffect(() => {
-    setAssessmentOutcome(null)
+    assessmentOutcomeRef.current = null
 
     if (currentItem?.type === 'episode' && (currentItem.episode.completed || completedEpisodes.has(currentItem.episode.id))) {
       setProgress(100)
@@ -436,12 +518,16 @@ export function EpisodeFeed({
         <AssessmentComponent
           assessment={currentItem.assessment}
           onComplete={(passed, score) => {
-            setAssessmentOutcome({ passed, score, assessmentId: currentItem.assessment.id })
+            assessmentOutcomeRef.current = { passed, score, assessmentId: currentItem.assessment.id }
             onAssessmentComplete(passed, score, currentItem.assessment)
           }}
+          onShareResult={({ score }) => onAssessmentShare?.(currentItem.assessment, score)}
           onClose={() => {
             setShowAssessmentModal(false)
-            if (assessmentOutcome?.assessmentId === currentItem.assessment.id && assessmentOutcome.passed) {
+            if (
+              assessmentOutcomeRef.current?.assessmentId === currentItem.assessment.id &&
+              assessmentOutcomeRef.current.passed
+            ) {
               goNext()
               return
             }
@@ -456,12 +542,14 @@ export function EpisodeFeed({
   // ── Main Reels View ──
   const ep = currentItem?.type === 'episode' ? currentItem.episode : null
   const gameItem = currentItem?.type === 'game' ? currentItem : null
+  const roleplayItem = currentItem?.type === 'roleplay' ? currentItem : null
   const rewardItem = currentItem?.type === 'reward' ? currentItem : null
   const isCompleted = ep ? completedEpisodes.has(ep.id) || progress >= 100 : false
   const totalEpisodeCount = courseEpisodes.length
   const isGameCompleted = gameItem ? completedGameSet.has(gameItem.game.id) : false
+  const isRoleplayCompleted = roleplayItem ? completedRoleplaySet.has(roleplayItem.roleplay.id) : false
   const moduleRewardUnlocked = rewardItem
-    ? isModuleComplete(rewardItem.module, completedEpisodes, completedGameSet, completedAssessmentSet)
+    ? isModuleComplete(rewardItem.module, completedEpisodes, completedGameSet, completedAssessmentSet, completedRoleplaySet)
     : false
 
   return (
@@ -514,12 +602,19 @@ export function EpisodeFeed({
                 <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.12)_1px,transparent_0)] [background-size:26px_26px]" />
               </div>
             )}
-            {rewardItem && (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.28),_transparent_30%),radial-gradient(circle_at_bottom,_rgba(249,115,22,0.18),_transparent_36%),linear-gradient(180deg,#eff6ff_0%,#f8fafc_35%,#fefce8_100%)]">
-                <div className="absolute -left-14 top-16 h-48 w-48 rounded-full bg-cyan-200/40 blur-3xl" />
-                <div className="absolute -right-10 bottom-10 h-52 w-52 rounded-full bg-amber-200/40 blur-3xl" />
+            {roleplayItem && (
+              <div className={cn('absolute inset-0', getRoleplayTheme().bgClass)}>
+                <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.14)_1px,transparent_0)] [background-size:28px_28px]" />
+                <div className="absolute -left-12 top-24 h-44 w-44 rounded-full bg-pink-400/20 blur-3xl" />
+                <div className="absolute -right-10 bottom-14 h-48 w-48 rounded-full bg-sky-400/18 blur-3xl" />
               </div>
             )}
+	            {rewardItem && (
+	              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.28),_transparent_30%),radial-gradient(circle_at_bottom,_rgba(249,115,22,0.18),_transparent_36%),linear-gradient(180deg,#eff6ff_0%,#f8fafc_35%,#fefce8_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.22),_transparent_26%),radial-gradient(circle_at_bottom,_rgba(245,158,11,0.14),_transparent_34%),linear-gradient(180deg,#030712_0%,#0f172a_52%,#111827_100%)]">
+	                <div className="absolute -left-14 top-16 h-48 w-48 rounded-full bg-cyan-200/40 blur-3xl dark:bg-cyan-400/10" />
+	                <div className="absolute -right-10 bottom-10 h-52 w-52 rounded-full bg-amber-200/40 blur-3xl dark:bg-amber-400/10" />
+	              </div>
+	            )}
           </motion.div>
         </AnimatePresence>
       </motion.div>
@@ -541,27 +636,41 @@ export function EpisodeFeed({
 
       {/* ── Header ── */}
       <div className="absolute top-0 inset-x-0 z-20 pt-12 px-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={onClose} className="p-2 rounded-full bg-black/40 backdrop-blur-sm">
-              <ChevronLeft className="w-5 h-5 text-white" />
-            </button>
-            <div>
-              <span className="text-sm font-semibold text-white">{course.title}</span>
-              <p className="text-[10px] text-white/60">{course.instructor.name}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm">
-              <Flame className="w-4 h-4 text-orange-500" />
-              <span className="text-sm font-medium text-white">{userStreak}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm">
-              <Zap className="w-3.5 h-3.5 text-primary" />
-              <span className="text-sm font-medium text-white">{userXP.toLocaleString()} XP</span>
-            </div>
-          </div>
-        </div>
+		        <div className="flex items-center justify-between">
+		          <div className="flex items-center gap-3">
+		            <button
+		              onClick={onClose}
+		              className={cn(
+		                'p-2 rounded-full bg-black/40 backdrop-blur-sm',
+		                rewardItem && 'border border-white/14 bg-white/10 shadow-[0_16px_36px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[0_18px_40px_rgba(0,0,0,0.32)]',
+		              )}
+		            >
+		              <ChevronLeft className="w-5 h-5 text-white" />
+		            </button>
+		            <div className={cn(
+		              rewardItem && 'rounded-[1.35rem] border border-white/18 bg-white/10 px-4 py-2.5 shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[0_18px_40px_rgba(0,0,0,0.34)]',
+		            )}>
+		              <span className="text-sm font-semibold text-white">{course.title}</span>
+		              <p className="text-[10px] text-white/70">{course.instructor.name}</p>
+		            </div>
+		          </div>
+	          <div className="flex items-center gap-2">
+	            <div className={cn(
+	              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm',
+	              rewardItem && 'rounded-[1.2rem] border border-white/16 bg-white/10 px-3.5 py-2 shadow-[0_16px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[0_18px_36px_rgba(0,0,0,0.3)]',
+	            )}>
+	              <Flame className="w-4 h-4 text-orange-500" />
+	              <span className="text-sm font-semibold text-white">{userStreak}</span>
+	            </div>
+	            <div className={cn(
+	              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm',
+	              rewardItem && 'rounded-[1.2rem] border border-white/16 bg-white/10 px-3.5 py-2 shadow-[0_16px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[0_18px_36px_rgba(0,0,0,0.3)]',
+	            )}>
+	              <Zap className="w-3.5 h-3.5 text-primary" />
+	              <span className="text-sm font-semibold text-white">{userXP.toLocaleString()} XP</span>
+	            </div>
+	          </div>
+	        </div>
 
         {/* Episode Counter Pill */}
         <div className="mt-3 flex justify-center">
@@ -666,7 +775,7 @@ export function EpisodeFeed({
         </div>
       )}
 
-      {gameItem && (() => {
+	      {gameItem && (() => {
         const theme = getGameTheme(gameItem.game)
         const ThemeIcon = theme.Icon
 
@@ -733,68 +842,143 @@ export function EpisodeFeed({
 	            </div>
 	          </div>
         )
-      })()}
+	      })()}
 
-      {rewardItem && (
-        <div className="absolute inset-x-0 bottom-14 z-20 px-4">
-          <div className="mx-auto max-w-lg rounded-[2.2rem] border border-white/80 bg-white/82 p-6 shadow-[0_30px_100px_rgba(15,23,42,0.12)] backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                  <Award className="w-3.5 h-3.5" />
-                  Module Reward
-                </div>
-                <h2 className="mt-4 text-3xl font-black text-slate-950">
-                  {moduleRewardUnlocked
-                    ? `Module ${rewardItem.module.level} complete`
-                    : `Module ${rewardItem.module.level} checkpoint`}
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  {moduleRewardUnlocked
-                    ? `You cleared ${rewardItem.module.title} and unlocked a badge for this level.`
-                    : `You reached the end of ${rewardItem.module.title}. Complete the challenge to fully lock this level in.`}
-                </p>
-              </div>
+		      {roleplayItem && (() => {
+		        const theme = getRoleplayTheme()
 
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-[2rem] bg-gradient-to-br from-amber-300 to-orange-400 text-white shadow-[0_16px_30px_rgba(249,115,22,0.28)]">
-                <Trophy className="w-10 h-10" />
-                <div className="absolute -bottom-2 rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-700 shadow-sm">
-                  Badge
-                </div>
-              </div>
-            </div>
+		        return (
+		          <div className="absolute inset-x-0 bottom-10 z-20 px-4">
+		            <div className="mx-auto max-w-md rounded-[2rem] border border-white/10 bg-white/8 p-6 text-white shadow-[0_30px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+	              <div className={cn('inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]', theme.pillClass)}>
+	                <BrainCircuit className="w-3.5 h-3.5" />
+	                AI Roleplay Ahead
+	              </div>
 
-            <div className="mt-8 rounded-[1.75rem] border border-slate-200 bg-slate-950 px-5 py-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Unlocked Badge</p>
-                  <p className="mt-2 text-2xl font-black">{rewardItem.module.title} Finisher</p>
-                  <p className="mt-1 text-sm text-slate-300">Level {rewardItem.module.level} progress stamped to your profile.</p>
-                </div>
-                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/10">
-                  <Sparkles className="w-8 h-8 text-cyan-300" />
-                </div>
-              </div>
-            </div>
+	              <div className="mt-4 flex items-start justify-between gap-4">
+	                <div>
+	                  <h2 className="text-3xl font-black leading-tight">{roleplayItem.roleplay.title}</h2>
+	                  <p className="mt-2 text-sm text-white/75">Step into a guided simulation so the learner knows the exact conversation they are about to practice.</p>
+	                </div>
+		                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/10">
+		                  <Sparkles className="w-8 h-8" />
+		                </div>
+		              </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Button
-                className="rounded-full bg-gradient-to-r from-sky-500 to-blue-600 font-bold text-white shadow-lg hover:opacity-95"
-                onClick={goNext}
-              >
-                {rewardItem.nextEpisodeId ? 'Continue to Next Module' : 'Finish Course Journey'}
-              </Button>
-              {onPracticeWithAI && (
-                <Button
-                  variant="outline"
-                  className="rounded-full border-slate-200 bg-white/80 text-slate-900 hover:bg-white"
-                  onClick={onPracticeWithAI}
-                >
-                  <BrainCircuit className="mr-2 w-4 h-4" />
-                  Practice with AI Coach
-                </Button>
-              )}
-            </div>
+		              <div className="mt-5 grid grid-cols-2 gap-3">
+		                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+		                  <p className="text-[10px] uppercase tracking-[0.25em] text-white/45">Scenario</p>
+		                  <p className="mt-2 line-clamp-4 text-sm font-semibold leading-7 text-white/95">{roleplayItem.roleplay.scenario}</p>
+		                </div>
+		                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+		                  <p className="text-[10px] uppercase tracking-[0.25em] text-white/45">Reward</p>
+		                  <p className="mt-2 text-3xl font-black text-pink-200">+{roleplayItem.roleplay.xpReward}</p>
+		                </div>
+		              </div>
+
+		              <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+		                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">What to expect</p>
+		                <p className="mt-2 text-sm leading-6 text-white/80">
+		                  You will roleplay this exact scenario with AI Coach, get real-time conversational practice, and then return to the journey ready for the next unlock.
+		                </p>
+		              </div>
+
+		              <div className="mt-5 flex gap-3">
+		                <Button
+		                  className={cn('flex-1 rounded-full bg-gradient-to-r font-bold shadow-lg hover:opacity-95', theme.buttonClass)}
+		                  onClick={() => onPracticeWithAI?.(roleplayItem.roleplay.scenario, roleplayItem.roleplay.id)}
+		                >
+		                  {isRoleplayCompleted ? 'Open Roleplay Again' : 'Start Roleplay'}
+		                </Button>
+		                <Button
+		                  size="sm"
+		                  variant="outline"
+		                  className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10"
+		                  onClick={onClose}
+		                >
+		                  Go Back
+		                </Button>
+		              </div>
+		            </div>
+		          </div>
+	        )
+	      })()}
+
+	      {rewardItem && (
+	        <div className="absolute inset-x-0 bottom-14 z-20 px-4">
+	          <div className="mx-auto max-w-lg rounded-[2.2rem] border border-white/80 bg-white/82 p-6 shadow-[0_30px_100px_rgba(15,23,42,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.94)_0%,rgba(15,23,42,0.92)_55%,rgba(17,24,39,0.94)_100%)] dark:shadow-[0_30px_100px_rgba(0,0,0,0.42)]">
+	            <div className="flex items-start justify-between gap-4">
+	              <div>
+	                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:border dark:border-emerald-300/15 dark:bg-emerald-400/12 dark:text-emerald-200">
+	                  <Award className="w-3.5 h-3.5" />
+	                  Module Reward
+	                </div>
+	                <h2 className="mt-4 text-3xl font-black text-slate-950 dark:text-white">
+	                  {moduleRewardUnlocked
+	                    ? `Module ${rewardItem.module.level} complete`
+	                    : `Module ${rewardItem.module.level} checkpoint`}
+	                </h2>
+	                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+	                  {moduleRewardUnlocked
+	                    ? `You cleared ${rewardItem.module.title} and unlocked a badge for this level.`
+	                    : `You reached the end of ${rewardItem.module.title}. Complete the challenge to fully lock this level in.`}
+	                </p>
+	              </div>
+	
+	              <div className="relative flex h-20 w-20 items-center justify-center rounded-[2rem] bg-gradient-to-br from-amber-300 to-orange-400 text-white shadow-[0_16px_30px_rgba(249,115,22,0.28)] dark:shadow-[0_18px_32px_rgba(249,115,22,0.22)]">
+	                <Trophy className="w-10 h-10" />
+	                <div className="absolute -bottom-2 rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-700 shadow-sm dark:border dark:border-white/10 dark:bg-slate-950 dark:text-slate-100">
+	                  Badge
+	                </div>
+	              </div>
+	            </div>
+	
+	            <div className="mt-8 rounded-[1.75rem] border border-slate-200 bg-slate-950 px-5 py-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:border-cyan-300/10 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98)_0%,rgba(3,7,18,0.98)_100%)]">
+	              <div className="flex items-center justify-between gap-4">
+	                <div>
+	                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Unlocked Badge</p>
+	                  <p className="mt-2 text-2xl font-black">{rewardItem.module.title} Finisher</p>
+	                  <p className="mt-1 text-sm text-slate-300 dark:text-slate-400">Level {rewardItem.module.level} progress stamped to your profile.</p>
+	                </div>
+	                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/10 dark:bg-cyan-400/10">
+	                  <Sparkles className="w-8 h-8 text-cyan-300" />
+	                </div>
+	              </div>
+	            </div>
+	
+		            <div className="mt-6 space-y-3">
+		              <Button
+		                className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-600 font-bold text-white shadow-[0_14px_30px_rgba(37,99,235,0.28)] hover:opacity-95 dark:from-cyan-400 dark:via-sky-500 dark:to-blue-700"
+		                onClick={goNext}
+		              >
+		                {rewardItem.nextEpisodeId ? 'Continue to Next Module' : 'Finish Course Journey'}
+		              </Button>
+
+		              <div className="grid gap-3 sm:grid-cols-2">
+		                {moduleRewardUnlocked && onModuleRewardShare && (
+		                  <Button
+		                    className="rounded-full border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.2)_0%,rgba(255,255,255,0.08)_100%)] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_24px_rgba(15,23,42,0.16)] backdrop-blur-xl transition hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.1)_100%)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.04)_100%)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(0,0,0,0.22)] dark:hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0.05)_100%)]"
+		                    onClick={() => onModuleRewardShare(rewardItem.module)}
+		                  >
+		                    <Share2 className="mr-2 w-4 h-4" />
+		                    Share Reward
+		                  </Button>
+		                )}
+		                {onPracticeWithAI && rewardItem.module.aiRoleplay && (
+		                  <Button
+		                    className="rounded-full border border-cyan-300/18 bg-[linear-gradient(180deg,rgba(34,211,238,0.22)_0%,rgba(59,130,246,0.16)_100%)] font-medium text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_24px_rgba(8,47,73,0.16)] backdrop-blur-xl transition hover:bg-[linear-gradient(180deg,rgba(34,211,238,0.26)_0%,rgba(59,130,246,0.18)_100%)] dark:border-cyan-300/16 dark:bg-[linear-gradient(180deg,rgba(8,47,73,0.5)_0%,rgba(12,74,110,0.34)_100%)] dark:text-cyan-50 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_24px_rgba(0,0,0,0.22)] dark:hover:bg-[linear-gradient(180deg,rgba(8,47,73,0.58)_0%,rgba(12,74,110,0.4)_100%)]"
+		                    onClick={() => {
+		                      if (rewardItem?.module.aiRoleplay) {
+		                        onPracticeWithAI(rewardItem.module.aiRoleplay.scenario, rewardItem.module.aiRoleplay.id)
+		                      }
+		                    }}
+		                  >
+		                    <BrainCircuit className="mr-2 w-4 h-4" />
+		                    Practice with AI Coach
+		                  </Button>
+		                )}
+		              </div>
+		            </div>
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { Course, Episode, Assessment, MiniGame, SkillCategory, CompetencyEventType } from '@/lib/types'
+import type { Course, Episode, Assessment, MiniGame, Module, SkillCategory, CompetencyEventType } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
   Search, Filter, Clock, Play, ChevronRight, Lock, CheckCircle2, Star,
@@ -17,6 +17,20 @@ import { SpeedMcqGame } from './games/speed-mcq-game'
 
 interface CoursesPageProps {
   courses: Course[]
+  progressState?: {
+    completedEpisodes: Set<string>
+    completedGames: Set<string>
+    completedAssessments: Set<string>
+    completedModules: Set<string>
+    completedRoleplays: Set<string>
+  }
+  onProgressStateChange?: (progress: {
+    completedEpisodes: Set<string>
+    completedGames: Set<string>
+    completedAssessments: Set<string>
+    completedModules: Set<string>
+    completedRoleplays: Set<string>
+  }) => void
   onSkillUpdate?: (skillCategory: string, score: number) => void
   onCompetencyEvent?: (event: {
     type: CompetencyEventType
@@ -27,15 +41,24 @@ interface CoursesPageProps {
   }) => void
   autoPlayCourseId?: string | null
   openCourseId?: string | null
-  onLessonComplete?: (xp: number) => void
+  resumeRewardModuleId?: string | null
+  onLessonComplete?: (episode: Episode) => void
   onXPGain?: (xp: number, label?: string) => void
-  onPracticeWithAI?: () => void
+  onPracticeWithAI?: (scenario: string, id: string, courseId?: string) => void
   onShareGameScore?: (payload: {
     gameTitle: string
     courseTitle: string
     score: number
     xpEarned: number
-    courseThumbnail: string
+  }) => void
+  onShareAssessmentResult?: (payload: {
+    assessment: Assessment
+    courseTitle: string
+    score: number
+  }) => void
+  onShareModuleReward?: (payload: {
+    module: Module
+    courseTitle: string
   }) => void
 }
 
@@ -56,30 +79,80 @@ function getNextAvailableEpisode(course: Course, completedEpisodes: Set<string>)
     ?? null
 }
 
+function buildInitialCompletionState(courses: Course[]) {
+  const completedEpisodes = new Set<string>()
+  const completedGames = new Set<string>()
+  const completedAssessments = new Set<string>()
+  const completedModules = new Set<string>()
+  const completedRoleplays = new Set<string>()
+
+  courses.forEach(course => {
+    getCourseEpisodes(course).forEach(episode => {
+      if (episode.completed) completedEpisodes.add(episode.id)
+    })
+
+    course.modules?.forEach(courseModule => {
+      if (courseModule.completed) {
+        courseModule.episodes.forEach(episode => completedEpisodes.add(episode.id))
+        courseModule.miniGames.forEach(({ game }) => completedGames.add(game.id))
+        completedAssessments.add(courseModule.finalAssessment.id)
+      }
+    })
+  })
+
+  return {
+    completedEpisodes,
+    completedGames,
+    completedAssessments,
+    completedModules,
+    completedRoleplays,
+  }
+}
+
 function isModuleFullyComplete(
   courseModule: NonNullable<Course['modules']>[number],
   completedEpisodes: Set<string>,
   completedGames: Set<string>,
   completedAssessments: Set<string>,
+  completedRoleplays: Set<string>,
 ) {
   const episodesDone = courseModule.episodes.every(episode => episode.completed || completedEpisodes.has(episode.id))
   const gamesDone = courseModule.miniGames.every(({ game }) => completedGames.has(game.id))
   const assessmentDone = completedAssessments.has(courseModule.finalAssessment.id)
-  return episodesDone && gamesDone && assessmentDone
+  const roleplayDone = !courseModule.aiRoleplay || completedRoleplays.has(courseModule.aiRoleplay.id)
+  return episodesDone && gamesDone && assessmentDone && roleplayDone
 }
 
-export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPlayCourseId, openCourseId, onLessonComplete, onXPGain, onPracticeWithAI, onShareGameScore }: CoursesPageProps) {
+export function CoursesPage({
+  courses,
+  progressState,
+  onProgressStateChange,
+  onSkillUpdate,
+  onCompetencyEvent,
+  autoPlayCourseId,
+  openCourseId,
+  resumeRewardModuleId,
+  onLessonComplete,
+  onXPGain,
+  onPracticeWithAI,
+  onShareGameScore,
+  onShareAssessmentResult,
+  onShareModuleReward,
+}: CoursesPageProps) {
+  const initialCompletionState = progressState ?? buildInitialCompletionState(courses)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed'>('all')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
-  const [completedEpisodes, setCompletedEpisodes] = useState<Set<string>>(new Set())
-  const [completedGames, setCompletedGames] = useState<Set<string>>(new Set())
-  const [completedAssessments, setCompletedAssessments] = useState<Set<string>>(new Set())
-  const [completedModules, setCompletedModules] = useState<Set<string>>(new Set())
+  const [completedEpisodes, setCompletedEpisodes] = useState<Set<string>>(() => new Set(initialCompletionState.completedEpisodes))
+  const [completedGames, setCompletedGames] = useState<Set<string>>(() => new Set(initialCompletionState.completedGames))
+  const [completedAssessments, setCompletedAssessments] = useState<Set<string>>(() => new Set(initialCompletionState.completedAssessments))
+  const [completedModules, setCompletedModules] = useState<Set<string>>(() => new Set(initialCompletionState.completedModules))
+  const [completedRoleplays, setCompletedRoleplays] = useState<Set<string>>(() => new Set(initialCompletionState.completedRoleplays))
   const [aiRecommendation, setAiRecommendation] = useState<AIRecommendation | null>(null)
   const [showFeed, setShowFeed] = useState(false)
   const [activeEpisodeId, setActiveEpisodeId] = useState<string | null>(null)
+  const [activeAssessmentId, setActiveAssessmentId] = useState<string | null>(null)
   const [activeGame, setActiveGame] = useState<MiniGame | null>(null)
   const [activeAssessment, setActiveAssessment] = useState<Assessment | null>(null)
 
@@ -103,13 +176,14 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
     const course = courses.find(c => c.id === openCourseId)
     if (course) {
       setSelectedCourse(course)
-      setShowFeed(false)
+      setShowFeed(Boolean(resumeRewardModuleId))
       setActiveEpisodeId(null)
+      setActiveAssessmentId(null)
       setActiveGame(null)
       setActiveAssessment(null)
       setAiRecommendation(null)
     }
-  }, [openCourseId, courses])
+  }, [openCourseId, resumeRewardModuleId, courses])
 
   const filteredCourses = courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -119,8 +193,18 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
   })
 
   const handleEpisodeComplete = (episode: Episode) => {
-    setCompletedEpisodes(prev => new Set(prev).add(episode.id))
-    if (onLessonComplete) onLessonComplete(episode.xp || 50)
+    setCompletedEpisodes(prev => {
+      const next = new Set(prev).add(episode.id)
+      onProgressStateChange?.({
+        completedEpisodes: next,
+        completedGames,
+        completedAssessments,
+        completedModules,
+        completedRoleplays,
+      })
+      return next
+    })
+    onLessonComplete?.(episode)
   }
 
   const handleAssessmentComplete = (passed: boolean, score: number, assessment?: Assessment) => {
@@ -136,15 +220,34 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
       onSkillUpdate(selectedCourse.skillCategory, score)
     }
     if (passed && assessment) {
-      setCompletedAssessments(prev => new Set(prev).add(assessment.id))
+      setCompletedAssessments(prev => {
+        const next = new Set(prev).add(assessment.id)
+        onProgressStateChange?.({
+          completedEpisodes,
+          completedGames,
+          completedAssessments: next,
+          completedModules,
+          completedRoleplays,
+        })
+        return next
+      })
     }
-    const rec = generateRecommendation(score)
-    setAiRecommendation(rec)
+    setAiRecommendation(null)
     setActiveAssessment(null)
   }
 
   const handleGameComplete = (game: MiniGame, score: number, xpEarned: number) => {
-    setCompletedGames(prev => new Set(prev).add(game.id))
+    setCompletedGames(prev => {
+      const next = new Set(prev).add(game.id)
+      onProgressStateChange?.({
+        completedEpisodes,
+        completedGames: next,
+        completedAssessments,
+        completedModules,
+        completedRoleplays,
+      })
+      return next
+    })
     if (selectedCourse && onCompetencyEvent) {
       onCompetencyEvent({
         type: 'mini_game',
@@ -160,11 +263,15 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
     }
   }
 
+  const handlePracticeWithAI = (scenario: string, id: string) => {
+    onPracticeWithAI?.(scenario, id, selectedCourse?.id)
+  }
+
   useEffect(() => {
     if (!selectedCourse?.modules?.length || !onCompetencyEvent) return
 
     const newlyCompletedModules = selectedCourse.modules.filter(courseModule => (
-      isModuleFullyComplete(courseModule, completedEpisodes, completedGames, completedAssessments)
+      isModuleFullyComplete(courseModule, completedEpisodes, completedGames, completedAssessments, completedRoleplays)
       && !completedModules.has(courseModule.id)
     ))
 
@@ -173,6 +280,13 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
     setCompletedModules(prev => {
       const next = new Set(prev)
       newlyCompletedModules.forEach(courseModule => next.add(courseModule.id))
+      onProgressStateChange?.({
+        completedEpisodes,
+        completedGames,
+        completedAssessments,
+        completedModules: next,
+        completedRoleplays,
+      })
       return next
     })
 
@@ -185,7 +299,7 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
         sourceTitle: `${courseModule.title} complete`,
       })
     })
-  }, [completedAssessments, completedEpisodes, completedGames, completedModules, onCompetencyEvent, selectedCourse])
+  }, [completedAssessments, completedEpisodes, completedGames, completedModules, completedRoleplays, onCompetencyEvent, selectedCourse])
 
   const generateRecommendation = (score: number): AIRecommendation => {
     if (score >= 80) {
@@ -210,12 +324,14 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
 
   const handleCloseFeed = () => {
     setShowFeed(false)
+    setActiveAssessmentId(null)
   }
 
   const handleCloseCourseDetail = () => {
     setSelectedCourse(null)
     setShowFeed(false)
     setActiveEpisodeId(null)
+    setActiveAssessmentId(null)
     setActiveGame(null)
     setActiveAssessment(null)
   }
@@ -223,20 +339,20 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
   const renderGame = () => {
     if (!activeGame) return null
 
-    const commonProps = {
-      game: activeGame,
-      onClose: () => setActiveGame(null),
-      onComplete: (score: number, xpEarned: number) => handleGameComplete(activeGame, score, xpEarned),
-        onShareScore: (score: number, xpEarned: number) => {
-          if (!selectedCourse) return
-          onShareGameScore?.({
-            gameTitle: activeGame.title,
-            courseTitle: selectedCourse.title,
-            score,
-            xpEarned,
-            courseThumbnail: selectedCourse.thumbnail,
-          })
-        },
+	    const commonProps = {
+	      game: activeGame,
+	      onClose: () => setActiveGame(null),
+	      onComplete: (score: number, xpEarned: number) => handleGameComplete(activeGame, score, xpEarned),
+	      continueLabel: 'Back to Journey Path',
+		      onShareScore: (score: number, xpEarned: number) => {
+		          if (!selectedCourse) return
+		          onShareGameScore?.({
+	            gameTitle: activeGame.title,
+	            courseTitle: selectedCourse.title,
+	            score,
+	            xpEarned,
+	          })
+	        },
     }
 
     if (activeGame.gameType === 'fruit-ninja') return <FruitNinjaGame {...commonProps} />
@@ -247,45 +363,71 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
   // ──────────────────────────────────────────────────────────────────────────
   // Course Detail View
   // ──────────────────────────────────────────────────────────────────────────
-  if (selectedCourse) {
-    const courseEpisodes = getCourseEpisodes(selectedCourse)
-    const isJourneyCourse = Boolean(selectedCourse.modules?.length)
-    const completedInCourse = courseEpisodes.filter(e => e.completed || completedEpisodes.has(e.id)).length
-    const progressPercent = courseEpisodes.length ? (completedInCourse / courseEpisodes.length) * 100 : 0
-
-    return (
-      <div className="space-y-4">
-        {showFeed && (
-          <EpisodeFeed
-            course={selectedCourse}
-            onClose={handleCloseFeed}
-            onEpisodeComplete={handleEpisodeComplete}
+	  if (selectedCourse) {
+	    const courseEpisodes = getCourseEpisodes(selectedCourse)
+	    const isJourneyCourse = Boolean(selectedCourse.modules?.length)
+	    const completedInCourse = courseEpisodes.filter(e => e.completed || completedEpisodes.has(e.id)).length
+	    const progressPercent = courseEpisodes.length ? (completedInCourse / courseEpisodes.length) * 100 : 0
+	    const feedRewardModuleId = activeEpisodeId || activeAssessmentId
+	      ? undefined
+	      : resumeRewardModuleId ?? undefined
+	
+	    return (
+	      <div className="space-y-4">
+		        {showFeed && (
+		            <EpisodeFeed
+	            course={selectedCourse}
+	            onClose={handleCloseFeed}
+	            onEpisodeComplete={handleEpisodeComplete}
             onAssessmentComplete={(passed, score, assessment) => handleAssessmentComplete(passed, score, assessment)}
             onGameComplete={handleGameComplete}
-            onGameShare={(game, score, xpEarned) => {
-              onShareGameScore?.({
-                gameTitle: game.title,
-                courseTitle: selectedCourse.title,
-                score,
-                xpEarned,
-                courseThumbnail: selectedCourse.thumbnail,
-              })
-            }}
-            onPracticeWithAI={onPracticeWithAI}
+	            onGameShare={(game, score, xpEarned) => {
+	              onShareGameScore?.({
+	                gameTitle: game.title,
+	                courseTitle: selectedCourse.title,
+	                score,
+	                xpEarned,
+	              })
+	            }}
+	            onAssessmentShare={(assessment, score) => {
+	              onShareAssessmentResult?.({
+	                assessment,
+	                courseTitle: selectedCourse.title,
+	                score,
+	              })
+	            }}
+	            onModuleRewardShare={(module) => {
+	              onShareModuleReward?.({
+	                module,
+	                courseTitle: selectedCourse.title,
+	              })
+	            }}
+	            onPracticeWithAI={handlePracticeWithAI}
             completedEpisodes={completedEpisodes}
-            completedGames={completedGames}
-            completedAssessments={completedAssessments}
-            initialEpisodeId={activeEpisodeId ?? undefined}
-          />
-        )}
+		            completedGames={completedGames}
+		            completedAssessments={completedAssessments}
+		            completedRoleplays={completedRoleplays}
+		            initialEpisodeId={activeEpisodeId ?? undefined}
+		            initialAssessmentId={activeAssessmentId ?? undefined}
+		            initialRewardModuleId={feedRewardModuleId}
+		          />
+	        )}
 
         {activeAssessment && (
           <div className="fixed inset-0 z-[70] bg-black">
-            <AssessmentComponent
-              assessment={activeAssessment}
-              onComplete={(passed, score) => handleAssessmentComplete(passed, score, activeAssessment)}
-              onClose={() => setActiveAssessment(null)}
-            />
+	            <AssessmentComponent
+	              assessment={activeAssessment}
+	              onComplete={(passed, score) => handleAssessmentComplete(passed, score, activeAssessment)}
+	              onShareResult={({ score, assessment }) => {
+	                if (!selectedCourse) return
+	                onShareAssessmentResult?.({
+	                  assessment,
+	                  courseTitle: selectedCourse.title,
+	                  score,
+	                })
+	              }}
+	              onClose={() => setActiveAssessment(null)}
+	            />
           </div>
         )}
 
@@ -357,8 +499,9 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
 	              onClick={() => {
 	                const nextEpisode = getNextAvailableEpisode(selectedCourse, completedEpisodes)
 	                setActiveEpisodeId(nextEpisode?.id ?? null)
+	                setActiveAssessmentId(null)
 	                setShowFeed(true)
-              }}
+	              }}
               className="absolute top-3 right-3 px-3 py-2 rounded-full bg-primary flex items-center gap-1.5 shadow-lg"
 	            >
 	              <Play className="w-4 h-4 text-white fill-white" />
@@ -390,12 +533,20 @@ export function CoursesPage({ courses, onSkillUpdate, onCompetencyEvent, autoPla
             completedEpisodes={completedEpisodes}
             completedGames={completedGames}
             completedAssessments={completedAssessments}
+            completedRoleplays={completedRoleplays}
             onPlayEpisode={(episode) => {
               setActiveEpisodeId(episode.id)
+              setActiveAssessmentId(null)
               setShowFeed(true)
             }}
             onPlayGame={setActiveGame}
-            onPlayAssessment={setActiveAssessment}
+            onPlayAssessment={(assessment) => {
+              setActiveEpisodeId(null)
+              setActiveAssessmentId(assessment.id)
+              setActiveAssessment(null)
+              setShowFeed(true)
+            }}
+            onPracticeWithAI={handlePracticeWithAI}
           />
         ) : (
           <div className="space-y-3">

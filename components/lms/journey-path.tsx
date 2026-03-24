@@ -15,12 +15,21 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react'
+import { useState } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
 type JourneyNode =
   | { type: 'episode'; episode: Episode; moduleIndex: number; epIndex: number }
   | { type: 'game'; game: MiniGame; moduleIndex: number }
   | { type: 'assessment'; assessment: Assessment; moduleIndex: number }
+  | { type: 'ai-roleplay'; id: string; scenario: string; title: string; xpReward: number; moduleIndex: number }
   | { type: 'module-header'; module: Module; moduleIndex: number }
   | { type: 'module-complete'; module: Module; moduleIndex: number }
   | { type: 'certificate' }
@@ -42,10 +51,11 @@ interface JourneyPathProps {
   completedEpisodes: Set<string>
   completedGames: Set<string>
   completedAssessments: Set<string>
+  completedRoleplays?: Set<string>
   onPlayEpisode: (episode: Episode) => void
   onPlayGame: (game: MiniGame) => void
   onPlayAssessment: (assessment: Assessment) => void
-  onPracticeWithAI?: () => void
+  onPracticeWithAI?: (scenario: string, id: string) => void
 }
 
 const ACTIONABLE_X_PATTERN = [50, 28, 66, 38, 60, 44]
@@ -82,6 +92,18 @@ function buildJourneyNodes(course: Course): JourneyNode[] {
     }
 
     nodes.push({ type: 'assessment', assessment: module.finalAssessment, moduleIndex })
+    
+    if (module.aiRoleplay) {
+      nodes.push({
+        type: 'ai-roleplay',
+        id: module.aiRoleplay.id,
+        scenario: module.aiRoleplay.scenario,
+        title: module.aiRoleplay.title,
+        xpReward: module.aiRoleplay.xpReward,
+        moduleIndex,
+      })
+    }
+
     nodes.push({ type: 'module-complete', module, moduleIndex })
   }
 
@@ -95,6 +117,7 @@ function isNodeUnlocked(
   completedEpisodes: Set<string>,
   completedGames: Set<string>,
   completedAssessments: Set<string>,
+  completedRoleplays: Set<string>,
 ) {
   if (node.type === 'module-header' || node.type === 'module-complete' || node.type === 'certificate') return true
 
@@ -104,13 +127,14 @@ function isNodeUnlocked(
 
   if (actionables[0] === node) return true
 
-  for (const item of allNodes) {
-    if (item === node) break
+    for (const item of allNodes) {
+      if (item === node) break
 
-    if (item.type === 'episode' && !item.episode.completed && !completedEpisodes.has(item.episode.id)) return false
-    if (item.type === 'game' && !completedGames.has(item.game.id)) return false
-    if (item.type === 'assessment' && !completedAssessments.has(item.assessment.id)) return false
-  }
+      if (item.type === 'episode' && !item.episode.completed && !completedEpisodes.has(item.episode.id)) return false
+      if (item.type === 'game' && !completedGames.has(item.game.id)) return false
+      if (item.type === 'assessment' && !completedAssessments.has(item.assessment.id)) return false
+      if (item.type === 'ai-roleplay' && !completedRoleplays.has(item.id)) return false
+    }
 
   return true
 }
@@ -120,10 +144,12 @@ function isNodeCompleted(
   completedEpisodes: Set<string>,
   completedGames: Set<string>,
   completedAssessments: Set<string>,
+  completedRoleplays?: Set<string>,
 ) {
   if (node.type === 'episode') return node.episode.completed || completedEpisodes.has(node.episode.id)
   if (node.type === 'game') return completedGames.has(node.game.id)
   if (node.type === 'assessment') return completedAssessments.has(node.assessment.id)
+  if (node.type === 'ai-roleplay') return completedRoleplays?.has(node.id) ?? false
   return false
 }
 
@@ -132,12 +158,14 @@ function isModuleCompleted(
   completedEpisodes: Set<string>,
   completedGames: Set<string>,
   completedAssessments: Set<string>,
+  completedRoleplays: Set<string>,
 ) {
   const episodesDone = module.episodes.every(episode => episode.completed || completedEpisodes.has(episode.id))
   const gamesDone = module.miniGames.every(({ game }) => completedGames.has(game.id))
   const assessmentDone = completedAssessments.has(module.finalAssessment.id)
+  const roleplayDone = !module.aiRoleplay || completedRoleplays.has(module.aiRoleplay.id)
 
-  return episodesDone && gamesDone && assessmentDone
+  return episodesDone && gamesDone && assessmentDone && roleplayDone
 }
 
 function isCourseCompleted(
@@ -145,11 +173,12 @@ function isCourseCompleted(
   completedEpisodes: Set<string>,
   completedGames: Set<string>,
   completedAssessments: Set<string>,
+  completedRoleplays: Set<string>,
 ) {
   if (!course.modules?.length) return course.status === 'completed'
 
   return course.modules.every(module =>
-    isModuleCompleted(module, completedEpisodes, completedGames, completedAssessments),
+    isModuleCompleted(module, completedEpisodes, completedGames, completedAssessments, completedRoleplays),
   )
 }
 
@@ -198,6 +227,8 @@ function layoutJourney(nodes: JourneyNode[]) {
       currentY += nextNode?.type === 'module-complete'
         ? ASSESSMENT_TO_REWARD_GAP
         : ASSESSMENT_GAP
+    } else if (node.type === 'ai-roleplay') {
+      currentY += ASSESSMENT_TO_REWARD_GAP
     } else {
       currentY += 156
     }
@@ -229,6 +260,7 @@ function getNodeLabel(node: PositionedNode['node'], course: Course) {
   if (node.type === 'episode') return node.episode.title
   if (node.type === 'game') return node.game.title
   if (node.type === 'assessment') return 'Module checkpoint'
+  if (node.type === 'ai-roleplay') return node.title
   if (node.type === 'module-complete') return `Level ${node.module.level} reward`
   return course.certificateTitle || 'Course certificate'
 }
@@ -237,6 +269,7 @@ function getNodeReward(node: PositionedNode['node']) {
   if (node.type === 'episode') return `+${node.episode.xp} XP`
   if (node.type === 'game') return `+${node.game.xpReward} XP`
   if (node.type === 'assessment') return `+${node.assessment.xpReward} XP`
+  if (node.type === 'ai-roleplay') return `+${node.xpReward} XP`
   return null
 }
 
@@ -244,6 +277,7 @@ function getNodeCue(node: PositionedNode['node']) {
   if (node.type === 'episode') return { label: 'Lesson', Icon: BookOpen }
   if (node.type === 'game') return { label: 'Mini-game', Icon: Gamepad2 }
   if (node.type === 'assessment') return { label: 'Checkpoint', Icon: Target }
+  if (node.type === 'ai-roleplay') return { label: 'AI Roleplay', Icon: Sparkles }
   if (node.type === 'module-complete') return { label: 'Reward chest', Icon: Trophy }
   return { label: 'Certificate', Icon: Award }
 }
@@ -253,6 +287,7 @@ export function JourneyPath({
   completedEpisodes,
   completedGames,
   completedAssessments,
+  completedRoleplays = new Set<string>(),
   onPlayEpisode,
   onPlayGame,
   onPlayAssessment,
@@ -260,17 +295,12 @@ export function JourneyPath({
 }: JourneyPathProps) {
   const nodes = buildJourneyNodes(course)
   const { headers, positionedNodes, totalHeight } = layoutJourney(nodes)
-  const courseCompleted = isCourseCompleted(course, completedEpisodes, completedGames, completedAssessments)
-
-  const currentPlayableIndex = positionedNodes.findIndex(({ node }) =>
-    (node.type === 'episode' || node.type === 'game' || node.type === 'assessment') &&
-    !isNodeCompleted(node, completedEpisodes, completedGames, completedAssessments) &&
-    isNodeUnlocked(node, nodes, completedEpisodes, completedGames, completedAssessments),
-  )
+  const [selectedRoleplay, setSelectedRoleplay] = useState<Extract<JourneyNode, { type: 'ai-roleplay' }> | null>(null)
+  const courseCompleted = isCourseCompleted(course, completedEpisodes, completedGames, completedAssessments, completedRoleplays)
 
   const reachedIndex = positionedNodes.reduce((furthestIndex, { node }, index) => {
     if (node.type === 'module-complete') {
-      return isModuleCompleted(node.module, completedEpisodes, completedGames, completedAssessments)
+      return isModuleCompleted(node.module, completedEpisodes, completedGames, completedAssessments, completedRoleplays)
         ? index
         : furthestIndex
     }
@@ -279,10 +309,18 @@ export function JourneyPath({
       return courseCompleted ? index : furthestIndex
     }
 
-    return isNodeCompleted(node, completedEpisodes, completedGames, completedAssessments)
+    const isUnlocked = isNodeUnlocked(node, nodes, completedEpisodes, completedGames, completedAssessments, completedRoleplays)
+    return isNodeCompleted(node, completedEpisodes, completedGames, completedAssessments, completedRoleplays) && isUnlocked
       ? index
       : furthestIndex
   }, -1)
+
+  const currentPlayableIndex = positionedNodes.findIndex(({ node }, index) =>
+    index >= reachedIndex &&
+    (node.type === 'episode' || node.type === 'game' || node.type === 'assessment' || node.type === 'ai-roleplay') &&
+    !isNodeCompleted(node, completedEpisodes, completedGames, completedAssessments, completedRoleplays) &&
+    isNodeUnlocked(node, nodes, completedEpisodes, completedGames, completedAssessments, completedRoleplays),
+  )
 
   const progressIndex = currentPlayableIndex === -1
     ? Math.max(reachedIndex, positionedNodes.length - 1)
@@ -332,6 +370,7 @@ export function JourneyPath({
               completedEpisodes,
               completedGames,
               completedAssessments,
+              completedRoleplays,
             )
 
             return (
@@ -373,16 +412,18 @@ export function JourneyPath({
               completedEpisodes,
               completedGames,
               completedAssessments,
+              completedRoleplays,
             )
             const completed = isNodeCompleted(
               node,
               completedEpisodes,
               completedGames,
               completedAssessments,
+              completedRoleplays,
             )
             const moduleRewardUnlocked =
               node.type === 'module-complete' &&
-              isModuleCompleted(node.module, completedEpisodes, completedGames, completedAssessments)
+              isModuleCompleted(node.module, completedEpisodes, completedGames, completedAssessments, completedRoleplays)
             const isCurrent = index === currentPlayableIndex
             const label = getNodeLabel(node, course)
             const reward = getNodeReward(node)
@@ -436,13 +477,21 @@ export function JourneyPath({
               clickHandler = () => onPlayAssessment(node.assessment)
             }
 
-            if (node.type === 'module-complete') {
-              const moduleComplete = isModuleCompleted(
-                node.module,
-                completedEpisodes,
-                completedGames,
-                completedAssessments,
-              )
+            if (node.type === 'ai-roleplay') {
+              nodeSize = 96
+              shellClassName = 'bg-[linear-gradient(180deg,#c084fc_0%,#9333ea_100%)] text-white shadow-[0_10px_0_#7e22ce] dark:bg-[linear-gradient(180deg,#a855f7_0%,#7e22ce_100%)]'
+              innerIcon = <Sparkles className="h-8 w-8" />
+              clickHandler = () => setSelectedRoleplay(node)
+            }
+
+	            if (node.type === 'module-complete') {
+	              const moduleComplete = isModuleCompleted(
+	                node.module,
+	                completedEpisodes,
+	                completedGames,
+	                completedAssessments,
+	                completedRoleplays,
+	              )
               nodeSize = 92
               shellClassName = moduleComplete
                 ? 'bg-[linear-gradient(180deg,#facc15_0%,#f59e0b_100%)] text-white shadow-[0_10px_0_#d97706]'
@@ -459,7 +508,7 @@ export function JourneyPath({
             }
 
             const isInteractive =
-              (node.type === 'episode' || node.type === 'game' || node.type === 'assessment') && unlocked
+              (node.type === 'episode' || node.type === 'game' || node.type === 'assessment' || node.type === 'ai-roleplay') && unlocked
             const labelWidth = node.type === 'certificate' ? 220 : 188
 
             return (
@@ -527,18 +576,7 @@ export function JourneyPath({
                         {node.assessment.questions.length} questions
                       </p>
                     )}
-                    {node.type === 'module-complete' && moduleRewardUnlocked && onPracticeWithAI && (
-                      <div className="mt-3">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 rounded-full bg-white/80 text-xs dark:border-white/15 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-800/80"
-                          onClick={onPracticeWithAI}
-                        >
-                          Practice with AI
-                        </Button>
-                      </div>
-                    )}
+                    {/* Removed old AI practice button */}
                     {node.type === 'certificate' && course.completionBadge && (
                       <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
                         Unlocks {course.completionBadge.name}
@@ -551,6 +589,51 @@ export function JourneyPath({
           })}
         </div>
       </div>
+      <Dialog open={!!selectedRoleplay} onOpenChange={(open) => !open && setSelectedRoleplay(null)}>
+        <DialogContent className="sm:max-w-md rounded-[28px] border-slate-800 bg-slate-950 text-white p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-400" />
+              AI Coach Roleplay
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Practice your skills in a guided simulation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
+              <p className="text-xs font-semibold uppercase tracking-wider text-purple-400">Scenario</p>
+              <p className="mt-2 text-sm text-slate-200 leading-relaxed font-medium">
+                {selectedRoleplay?.scenario}
+              </p>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-purple-500/10 px-4 py-3 border border-purple-500/20">
+              <span className="text-sm font-semibold text-purple-300">Reward</span>
+              <span className="text-sm font-bold text-purple-300">+{selectedRoleplay?.xpReward} XP</span>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                onClick={() => setSelectedRoleplay(null)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 font-bold text-white shadow-lg hover:opacity-95"
+                onClick={() => {
+                  if (selectedRoleplay && onPracticeWithAI) {
+                    onPracticeWithAI(selectedRoleplay.scenario, selectedRoleplay.id)
+                  }
+                  setSelectedRoleplay(null)
+                }}
+              >
+                Start Roleplay
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

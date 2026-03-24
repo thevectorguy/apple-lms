@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { User, Discussion, Achievement } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { ShareCelebrationCard, type ShareCardData } from './share-celebration-card'
 import {
   Heart,
   MessageCircle,
@@ -17,6 +18,7 @@ interface CommunityProps {
   discussions: Discussion[]
   achievements: Achievement[]
   posts?: CommunityFeedPost[]
+  onDeletePost?: (postId: string) => void
 }
 
 type CommunityTab = 'feed' | 'achievements' | 'discussions'
@@ -39,6 +41,8 @@ export interface CommunityFeedPost {
   likes: number
   comments: number
   isLiked: boolean
+  canDelete?: boolean
+  shareCard?: ShareCardData
   scoreShare?: {
     gameTitle: string
     courseTitle: string
@@ -47,9 +51,11 @@ export interface CommunityFeedPost {
   }
 }
 
-export function Community({ user, discussions, achievements, posts = [] }: CommunityProps) {
+export function Community({ user, discussions, achievements, posts = [], onDeletePost }: CommunityProps) {
   const [activeTab, setActiveTab] = useState<CommunityTab>('feed')
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [selectedSharePost, setSelectedSharePost] = useState<CommunityFeedPost | null>(null)
 
   const tabs = [
     { id: 'feed' as CommunityTab, label: 'Feed' },
@@ -107,6 +113,29 @@ export function Community({ user, discussions, achievements, posts = [] }: Commu
 
   return (
     <div className="space-y-4">
+      {selectedSharePost?.shareCard && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(17,24,39,0.98)_100%)] p-5 text-white shadow-[0_30px_120px_rgba(2,6,23,0.55)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-300/80">Share Card</p>
+                <h3 className="mt-1 text-xl font-black">{selectedSharePost.author.name}</h3>
+              </div>
+              <button
+                className="rounded-full border border-white/10 bg-white/5 p-2 text-white transition hover:bg-white/10"
+                onClick={() => setSelectedSharePost(null)}
+              >
+                <MoreHorizontal className="h-4 w-4 rotate-90" />
+              </button>
+            </div>
+
+            <ShareCelebrationCard card={selectedSharePost.shareCard} className="mt-4 mx-auto max-w-[30rem]" />
+
+            <p className="mt-4 text-sm leading-7 text-white/80">{selectedSharePost.content}</p>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="mb-2">
         <h1 className="text-2xl font-bold">Community</h1>
@@ -178,17 +207,38 @@ export function Community({ user, discussions, achievements, posts = [] }: Commu
                             Achievement
                           </span>
                         )}
-                        {post.type === 'milestone' && post.scoreShare && (
+                        {post.type === 'milestone' && (post.shareCard || post.scoreShare) && (
                           <span className="text-xs px-2 py-0.5 bg-primary/15 text-primary rounded-full font-medium">
-                            Score Share
+                            Share Card
                           </span>
                         )}
                         <span className="text-xs text-muted-foreground">{post.timestamp}</span>
                       </div>
-                      <button className="text-muted-foreground hover:text-foreground p-1">
-                        <MoreHorizontal className="w-5 h-5" />
-                      </button>
-                    </div>
+	                      <div className="relative">
+	                        <button
+	                          className="text-muted-foreground hover:text-foreground p-1"
+	                          onClick={() => {
+	                            if (!post.canDelete) return
+	                            setOpenMenuId(prev => prev === post.id ? null : post.id)
+	                          }}
+	                        >
+	                          <MoreHorizontal className="w-5 h-5" />
+	                        </button>
+	                        {post.canDelete && openMenuId === post.id && (
+	                          <div className="absolute right-0 top-9 z-10 min-w-[140px] rounded-xl border border-border bg-popover p-1.5 shadow-xl">
+	                            <button
+	                              className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-500 transition hover:bg-red-500/10"
+	                              onClick={() => {
+	                                onDeletePost?.(post.id)
+	                                setOpenMenuId(null)
+	                              }}
+	                            >
+	                              Delete Post
+	                            </button>
+	                          </div>
+	                        )}
+	                      </div>
+	                    </div>
 
                     <p className="mt-2 text-foreground/90">{post.content}</p>
 
@@ -205,7 +255,17 @@ export function Community({ user, discussions, achievements, posts = [] }: Commu
                       </div>
                     )}
 
-                    {post.scoreShare && (
+		                    {post.shareCard && (
+                          <button
+                            type="button"
+                            className="mt-3 block text-left"
+                            onClick={() => setSelectedSharePost(post)}
+                          >
+		                        <ShareCelebrationCard card={post.shareCard} compact className="max-w-[25rem] transition-transform hover:scale-[1.01]" />
+                          </button>
+		                    )}
+
+                    {!post.shareCard && post.scoreShare && (
                       <div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>

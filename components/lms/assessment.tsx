@@ -4,17 +4,18 @@ import { useState, useEffect } from 'react'
 import type { Assessment, Question } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { X, Clock, CheckCircle2, XCircle, Sparkles, Trophy, ArrowRight, RotateCcw } from 'lucide-react'
+import { X, Clock, CheckCircle2, XCircle, Sparkles, Trophy, ArrowRight, RotateCcw, Share2 } from 'lucide-react'
 
 interface AssessmentProps {
   assessment: Assessment
   onComplete: (passed: boolean, score: number) => void
+  onShareResult?: (payload: { score: number; xpEarned: number; assessment: Assessment }) => void
   onClose: () => void
 }
 
 type AssessmentState = 'intro' | 'quiz' | 'result'
 
-export function AssessmentComponent({ assessment, onComplete, onClose }: AssessmentProps) {
+export function AssessmentComponent({ assessment, onComplete, onShareResult, onClose }: AssessmentProps) {
   const [state, setState] = useState<AssessmentState>('intro')
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
@@ -22,6 +23,11 @@ export function AssessmentComponent({ assessment, onComplete, onClose }: Assessm
   const [showExplanation, setShowExplanation] = useState(false)
   const [timeLeft, setTimeLeft] = useState(assessment.timeLimit)
   const [score, setScore] = useState(0)
+  const [shared, setShared] = useState(false)
+
+  useEffect(() => {
+    setShared(false)
+  }, [assessment.id])
 
   useEffect(() => {
     if (state !== 'quiz') return
@@ -292,8 +298,8 @@ export function AssessmentComponent({ assessment, onComplete, onClose }: Assessm
             {assessment.questions.length} correct
           </p>
 
-          {passed && (
-            <div className="flex flex-col items-center gap-4 mb-8">
+	          {passed && (
+	            <div className="flex flex-col items-center gap-4 mb-8">
               <div className="flex items-center gap-2 bg-xp/20 text-xp px-4 py-2 rounded-full">
                 <Sparkles className="w-5 h-5" />
                 <span className="font-bold">+{assessment.xpReward} XP earned!</span>
@@ -304,12 +310,12 @@ export function AssessmentComponent({ assessment, onComplete, onClose }: Assessm
                   <span className="font-bold">{assessment.badgeReward.name} Badge Unlocked!</span>
                 </div>
               )}
-            </div>
-          )}
+	            </div>
+	          )}
 
-          <div className="flex gap-3 w-full max-w-xs">
-            {!passed && (
-              <Button
+	          <div className="flex gap-3 w-full max-w-sm">
+	            {!passed && (
+	              <Button
                 onClick={() => {
                   setState('intro')
                   setCurrentQuestion(0)
@@ -321,11 +327,25 @@ export function AssessmentComponent({ assessment, onComplete, onClose }: Assessm
                 className="flex-1"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Retry
-              </Button>
-            )}
-            <Button
-              onClick={onClose}
+	                Retry
+	              </Button>
+	            )}
+	            {passed && onShareResult && (
+	              <Button
+	                variant="outline"
+	                className="flex-1"
+	                disabled={shared}
+	                onClick={() => {
+	                  onShareResult({ score, xpEarned: assessment.xpReward, assessment })
+	                  setShared(true)
+	                }}
+	              >
+	                <Share2 className="w-4 h-4 mr-2" />
+	                {shared ? 'Draft Ready' : 'Share Result'}
+	              </Button>
+	            )}
+	            <Button
+	              onClick={onClose}
               className={cn(
                 'flex-1 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold',
                 !passed && 'flex-1'

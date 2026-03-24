@@ -11,6 +11,18 @@ interface SpeedMcqGameProps {
   game: MiniGame
   onComplete: (score: number, xpEarned: number) => void
   onShareScore?: (score: number, xpEarned: number) => void
+  continueLabel?: string
+  displayCopy?: {
+    topEyebrow?: string
+    topTitle?: string
+    cardEyebrow?: string
+    cardTitle?: string
+    questionHint?: string
+    resultsEyebrow?: string
+    resultsTitle?: string
+    resultsDescription?: string
+    retryHint?: string
+  }
   onClose: () => void
 }
 
@@ -19,7 +31,7 @@ const TICK_MS = 100
 const LOW_SCORE_THRESHOLD = 70
 const HIGH_SCORE_THRESHOLD = 80
 
-export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedMcqGameProps) {
+export function SpeedMcqGame({ game, onComplete, onShareScore, continueLabel = 'Continue Journey', displayCopy, onClose }: SpeedMcqGameProps) {
   const [questionIndex, setQuestionIndex] = useState(0)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME_MS)
   const [score, setScore] = useState(0)
@@ -34,6 +46,15 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedM
 
   const question = game.questions[questionIndex]
   const timerPercent = Math.max(0, (timeLeft / QUESTION_TIME_MS) * 100)
+  const topEyebrow = displayCopy?.topEyebrow ?? 'Speed MCQ'
+  const topTitle = displayCopy?.topTitle
+  const cardEyebrow = displayCopy?.cardEyebrow ?? 'Rapid Response'
+  const cardTitle = displayCopy?.cardTitle ?? game.title
+  const questionHint = displayCopy?.questionHint ?? 'Fast answers keep your streak alive and juice the XP payout.'
+  const resultsEyebrow = displayCopy?.resultsEyebrow ?? 'Speed Blitz'
+  const resultsTitle = displayCopy?.resultsTitle ?? 'Round Complete'
+  const resultsDescription = displayCopy?.resultsDescription ?? 'You kept the pressure on and banked bonus XP from fast answers.'
+  const retryHint = displayCopy?.retryHint ?? 'Run it back once more to sharpen the quick-recall parts before the next lesson.'
 
   useEffect(() => {
     if (phase !== 'playing') return
@@ -118,22 +139,23 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedM
   if (phase === 'results') {
     const shouldOfferRetry = accuracy < LOW_SCORE_THRESHOLD
     const shouldOfferShare = accuracy >= HIGH_SCORE_THRESHOLD
+    const canShareScore = shouldOfferShare && typeof onShareScore === 'function'
 
     return (
-      <div className="fixed inset-0 z-[70] bg-black flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/90 p-4 md:p-6">
         <motion.div
           initial={{ scale: 0.92, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-full max-w-sm rounded-[2rem] border border-cyan-400/20 bg-slate-950 p-6 text-white shadow-[0_0_60px_rgba(34,211,238,0.12)]"
+          className="mx-auto my-auto w-full max-w-xl overflow-y-auto rounded-[2rem] border border-cyan-400/20 bg-slate-950 p-5 text-white shadow-[0_0_60px_rgba(34,211,238,0.12)] md:max-h-[calc(100svh-3rem)] md:p-6"
         >
           <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-cyan-400 shadow-[0_0_30px_rgba(56,189,248,0.35)]">
             <Trophy className="h-10 w-10 text-white" />
           </div>
 
           <div className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-300/80">Speed Blitz</p>
-            <h2 className="mt-2 text-3xl font-black">Round Complete</h2>
-            <p className="mt-2 text-sm text-slate-300">You kept the pressure on and banked bonus XP from fast answers.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-300/80">{resultsEyebrow}</p>
+            <h2 className="mt-2 text-3xl font-black">{resultsTitle}</h2>
+            <p className="mt-2 text-sm text-slate-300">{resultsDescription}</p>
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-3">
@@ -167,17 +189,17 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedM
 
           {shouldOfferRetry && (
             <p className="mt-4 text-sm text-slate-300">
-              Run it back once more to sharpen the quick-recall parts before the next lesson.
+              {retryHint}
             </p>
           )}
 
-          {shouldOfferShare && (
+          {canShareScore && (
             <p className="mt-4 text-sm text-slate-300">
               That was quick and clean. Share the score to your community feed if you want.
             </p>
           )}
 
-          <div className={cn('mt-4 gap-3', shouldOfferRetry && !shouldOfferShare ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
+          <div className={cn('mt-4 gap-3', shouldOfferRetry !== canShareScore ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
             {shouldOfferRetry && (
               <Button
                 variant="outline"
@@ -188,10 +210,12 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedM
                 Try Again
               </Button>
             )}
-            {shouldOfferShare && (
+            {canShareScore && (
               <Button
-                variant="outline"
-                className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className={cn(
+                  'w-full border border-cyan-300/24 bg-[linear-gradient(180deg,rgba(34,211,238,0.24)_0%,rgba(8,47,73,0.34)_100%)] font-semibold text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(8,47,73,0.22)] hover:bg-[linear-gradient(180deg,rgba(34,211,238,0.32)_0%,rgba(8,47,73,0.42)_100%)]',
+                  !shouldOfferRetry && 'max-w-[240px]',
+                )}
                 disabled={shared}
                 onClick={() => {
                   onShareScore?.(accuracy, xpEarned)
@@ -207,7 +231,7 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedM
             className="mt-6 w-full bg-gradient-to-r from-orange-500 via-amber-400 to-cyan-400 font-bold text-slate-950 hover:opacity-90"
             onClick={() => onComplete(accuracy, xpEarned)}
           >
-            Continue Journey
+            {continueLabel}
           </Button>
         </motion.div>
       </div>
@@ -218,15 +242,15 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedM
     <div className="fixed inset-0 z-[70] overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.22),_transparent_30%),radial-gradient(circle_at_bottom,_rgba(249,115,22,0.2),_transparent_35%),linear-gradient(180deg,#020617_0%,#09090b_45%,#0f172a_100%)] text-white">
       <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:28px_28px]" />
 
-      <div className="absolute inset-x-0 top-0 z-20 px-4 pb-4 pt-12">
-        <div className="flex items-center justify-between">
+      <div className="relative z-10 mx-auto flex h-[100svh] w-full max-w-5xl flex-col px-3 pb-4 pt-4 sm:px-4 sm:pb-5 sm:pt-5">
+        <div className="flex items-center justify-between gap-3">
           <button onClick={onClose} className="rounded-full border border-white/10 bg-white/5 p-2 backdrop-blur-sm">
             <X className="h-5 w-5 text-white" />
           </button>
-          <div className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300/80">Speed MCQ</p>
+          <div className="min-w-0 flex-1 text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-300/80">{topEyebrow}</p>
             <p className="mt-1 text-sm text-slate-300">
-              Question {questionIndex + 1}/{game.questions.length}
+              {topTitle ? `${topTitle} • ` : ''}Question {questionIndex + 1}/{game.questions.length}
             </p>
           </div>
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold backdrop-blur-sm">
@@ -235,7 +259,7 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedM
           </div>
         </div>
 
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
           <motion.div
             className={cn(
               'h-full rounded-full',
@@ -245,98 +269,100 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, onClose }: SpeedM
             transition={{ ease: 'linear', duration: TICK_MS / 1000 }}
           />
         </div>
-      </div>
 
-      <div className="absolute left-4 right-4 top-32 z-20 grid grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm">
-          <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400">Score</p>
-          <p className="mt-2 text-2xl font-black text-cyan-300">{score}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm">
-          <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400">Streak</p>
-          <p className="mt-2 text-2xl font-black text-fuchsia-300">{streak}x</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm">
-          <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400">Correct</p>
-          <p className="mt-2 text-2xl font-black text-orange-300">{correctAnswers}</p>
-        </div>
-      </div>
-
-      <div className="relative z-10 flex min-h-full flex-col justify-center px-4 pb-10 pt-52">
-        <motion.div
-          key={question.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto w-full max-w-md rounded-[2rem] border border-cyan-400/20 bg-slate-950/80 p-6 shadow-[0_0_40px_rgba(14,165,233,0.16)] backdrop-blur-xl"
-        >
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-            <span className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-cyan-300" />
-              Rapid Response
-            </span>
-            <span>{game.title}</span>
+        <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-2.5 backdrop-blur-sm sm:p-3">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400">Score</p>
+            <p className="mt-1 text-lg font-black text-cyan-300 sm:text-xl">{score}</p>
           </div>
-
-          <h2 className="mt-4 text-2xl font-black leading-tight text-white">{question.text}</h2>
-          <p className="mt-2 text-sm text-slate-300">Fast answers keep your streak alive and juice the XP payout.</p>
-
-          <div className="mt-6 space-y-3">
-            {question.options.map((option, index) => {
-              const isCorrect = index === question.correctAnswer
-              const isSelected = index === selectedAnswer
-
-              return (
-                <motion.button
-                  key={`${question.id}-${index}`}
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  onClick={() => handleAnswer(index)}
-                  disabled={phase !== 'playing'}
-                  className={cn(
-                    'w-full rounded-2xl border px-4 py-4 text-left text-sm font-semibold transition-all',
-                    phase === 'playing' && 'border-white/10 bg-white/5 hover:border-cyan-300/40 hover:bg-cyan-400/10 active:scale-[0.99]',
-                    phase === 'feedback' && isCorrect && 'border-emerald-400/50 bg-emerald-400/20 text-emerald-50',
-                    phase === 'feedback' && isSelected && !isCorrect && 'border-rose-400/50 bg-rose-400/20 text-rose-50',
-                    phase === 'feedback' && !isSelected && !isCorrect && !isCorrect && 'border-white/10 bg-white/5 text-slate-300',
-                    phase !== 'playing' && !isCorrect && !isSelected && 'opacity-70',
-                  )}
-                >
-                  <span className="flex items-center justify-between gap-3">
-                    <span>{option}</span>
-                    {phase === 'feedback' && isCorrect && <Zap className="h-4 w-4 text-emerald-200" />}
-                    {phase === 'feedback' && isSelected && !isCorrect && <X className="h-4 w-4 text-rose-100" />}
-                  </span>
-                </motion.button>
-              )
-            })}
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-2.5 backdrop-blur-sm sm:p-3">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400">Streak</p>
+            <p className="mt-1 text-lg font-black text-fuchsia-300 sm:text-xl">{streak}x</p>
           </div>
-        </motion.div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-2.5 backdrop-blur-sm sm:p-3">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400">Correct</p>
+            <p className="mt-1 text-lg font-black text-orange-300 sm:text-xl">{correctAnswers}</p>
+          </div>
+        </div>
 
-        <AnimatePresence>
-          {phase === 'feedback' && (
+        <div className="flex min-h-0 flex-1 items-center justify-center py-3 sm:py-4">
+          <div className="w-full max-w-3xl">
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
+              key={question.id}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 16 }}
-              className={cn(
-                'mx-auto mt-5 flex w-full max-w-md items-start gap-3 rounded-2xl border px-4 py-4 backdrop-blur-sm',
-                lastAnswerCorrect ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-50' : 'border-rose-400/30 bg-rose-400/15 text-rose-50',
-              )}
+              className="w-full rounded-[1.75rem] border border-cyan-400/20 bg-slate-950/80 p-4 shadow-[0_0_40px_rgba(14,165,233,0.16)] backdrop-blur-xl sm:p-5 md:p-6"
             >
-              <div className={cn(
-                'mt-0.5 flex h-9 w-9 items-center justify-center rounded-full',
-                lastAnswerCorrect ? 'bg-emerald-400/25' : 'bg-rose-400/25',
-              )}>
-                {lastAnswerCorrect ? <Flame className="h-4 w-4" /> : <TimerReset className="h-4 w-4" />}
+              <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400 sm:text-xs">
+                <span className="flex min-w-0 items-center gap-2">
+                  <Target className="h-4 w-4 text-cyan-300" />
+                  <span className="truncate">{cardEyebrow}</span>
+                </span>
+                <span className="hidden truncate md:block">{cardTitle}</span>
               </div>
-              <div>
-                <p className="font-bold">{lastAnswerCorrect ? 'Nice hit' : 'Keep moving'}</p>
-                <p className="mt-1 text-sm opacity-90">{question.explanation}</p>
+
+              <h2 className="mt-3 text-[1.8rem] font-black leading-[1.02] text-white sm:text-[2.05rem] md:text-[2.4rem]">{question.text}</h2>
+              <p className="mt-2 text-sm leading-5 text-slate-300 sm:text-[15px] sm:leading-6">{questionHint}</p>
+
+              <div className="mt-4 grid gap-2.5 md:grid-cols-2">
+                {question.options.map((option, index) => {
+                  const isCorrect = index === question.correctAnswer
+                  const isSelected = index === selectedAnswer
+
+                  return (
+                    <motion.button
+                      key={`${question.id}-${index}`}
+                      initial={{ opacity: 0, x: -16 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      onClick={() => handleAnswer(index)}
+                      disabled={phase !== 'playing'}
+                      className={cn(
+                        'w-full rounded-2xl border px-4 py-3 text-left text-[15px] font-semibold transition-all sm:py-3.5 sm:text-base md:px-5',
+                        phase === 'playing' && 'border-white/10 bg-white/5 hover:border-cyan-300/40 hover:bg-cyan-400/10 active:scale-[0.99]',
+                        phase === 'feedback' && isCorrect && 'border-emerald-400/50 bg-emerald-400/20 text-emerald-50',
+                        phase === 'feedback' && isSelected && !isCorrect && 'border-rose-400/50 bg-rose-400/20 text-rose-50',
+                        phase === 'feedback' && !isSelected && !isCorrect && !isCorrect && 'border-white/10 bg-white/5 text-slate-300',
+                        phase !== 'playing' && !isCorrect && !isSelected && 'opacity-70',
+                      )}
+                    >
+                      <span className="flex items-center justify-between gap-3">
+                        <span>{option}</span>
+                        {phase === 'feedback' && isCorrect && <Zap className="h-4 w-4 text-emerald-200" />}
+                        {phase === 'feedback' && isSelected && !isCorrect && <X className="h-4 w-4 text-rose-100" />}
+                      </span>
+                    </motion.button>
+                  )
+                })}
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+
+            <AnimatePresence>
+              {phase === 'feedback' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 16 }}
+                  className={cn(
+                    'pointer-events-none fixed bottom-3 left-1/2 z-20 flex w-[min(92vw,42rem)] -translate-x-1/2 items-start gap-3 rounded-2xl border px-4 py-3 backdrop-blur-sm sm:bottom-4',
+                    lastAnswerCorrect ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-50' : 'border-rose-400/30 bg-rose-400/15 text-rose-50',
+                  )}
+                >
+                  <div className={cn(
+                    'mt-0.5 flex h-9 w-9 items-center justify-center rounded-full',
+                    lastAnswerCorrect ? 'bg-emerald-400/25' : 'bg-rose-400/25',
+                  )}>
+                    {lastAnswerCorrect ? <Flame className="h-4 w-4" /> : <TimerReset className="h-4 w-4" />}
+                  </div>
+                  <div>
+                    <p className="font-bold">{lastAnswerCorrect ? 'Nice hit' : 'Keep moving'}</p>
+                    <p className="mt-1 text-sm opacity-90">{question.explanation}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
     </div>
   )
