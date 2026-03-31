@@ -261,6 +261,15 @@ export const LEAGUE_INFO: Record<League, { name: string; icon: string; color: st
 
 export type SkillCategory = 'communication' | 'technical' | 'leadership' | 'compliance'
 
+export type SpeedStageKey =
+  | 'start_right'
+  | 'plan_to_probe'
+  | 'explain_value'
+  | 'eliminate_objection'
+  | 'drive_closure'
+
+export type SpeedPracticeMode = 'pitch' | 'roleplay' | 'guided_ai'
+
 export interface SkillRadarData {
   communication: number
   technical: number
@@ -279,6 +288,25 @@ export interface CompetencyEvent {
   sourceId: string
   sourceTitle: string
   timestamp: string
+}
+
+export interface SpeedStageProgress {
+  score: number
+  updatedAt?: string
+  sourceTitle?: string
+  practiceMode?: SpeedPracticeMode
+}
+
+export interface SpeedFrameworkState {
+  stages: Record<SpeedStageKey, SpeedStageProgress>
+}
+
+export interface SkillUpdateContext {
+  eventType?: CompetencyEventType
+  sourceId?: string
+  sourceTitle?: string
+  practiceMode?: SpeedPracticeMode | 'quiz'
+  speedSignals?: Partial<Record<SpeedStageKey, number>>
 }
 
 export type NextStepPlanType = 'next_module' | 'ai_practice' | 'recommended_course'
@@ -302,6 +330,7 @@ export interface UserSkillProfile {
   strongAreas: SkillCategory[]
   skillGapByCategory: Record<SkillCategory, number>
   competencyHistory: CompetencyEvent[]
+  speedFramework: SpeedFrameworkState
   nextStepPlan: NextStepPlan | null
   recommendations: string[]
 }

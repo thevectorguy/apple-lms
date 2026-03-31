@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { SpeedMcqGame } from '@/components/lms/games/speed-mcq-game'
 import { cn } from '@/lib/utils'
-import type { Course, MiniGame, SkillCategory, UserSkillProfile } from '@/lib/types'
+import type { Course, MiniGame, SkillCategory, SkillUpdateContext, SpeedStageKey, UserSkillProfile } from '@/lib/types'
 
 type PracticeMode = 'roleplay' | 'pitch'
 type ScreenState = 'landing' | 'setup' | 'active' | 'complete'
@@ -31,7 +31,7 @@ type AIState = 'idle' | 'listening' | 'thinking' | 'speaking'
 interface PracticeScreenProps {
   profile: UserSkillProfile
   courses: Course[]
-  onStartPractice: (skillCategory: SkillCategory, score: number) => void
+  onStartPractice: (skillCategory: SkillCategory, score: number, context?: SkillUpdateContext) => void
   onOpenCourse: (courseId: string) => void
   onOpenAICoach: () => void
 }
@@ -199,6 +199,26 @@ function buildSessionResult(mode: PracticeMode) {
       }
 }
 
+function buildSpeedSignals(mode: PracticeMode, score: number): Partial<Record<SpeedStageKey, number>> {
+  if (mode === 'pitch') {
+    return {
+      start_right: Math.min(100, score + 4),
+      plan_to_probe: Math.max(0, score - 2),
+      explain_value: Math.min(100, score + 3),
+      eliminate_objection: Math.max(0, score - 1),
+      drive_closure: Math.min(100, score + 1),
+    }
+  }
+
+  return {
+    start_right: Math.min(100, score + 1),
+    plan_to_probe: Math.min(100, score + 4),
+    explain_value: score,
+    eliminate_objection: Math.min(100, score + 5),
+    drive_closure: Math.min(100, score + 2),
+  }
+}
+
 function Avatar({ coach, aiState }: { coach: CoachConfig; aiState: AIState }) {
   return (
     <div className="relative mx-auto flex h-44 w-44 items-center justify-center">
@@ -265,7 +285,7 @@ function SessionComplete({
             <Sparkles className="h-8 w-8" />
           </div>
           <h2 className="mt-4 text-2xl font-black">Practice complete</h2>
-          <p className="mt-1 text-sm text-white/70">Your readiness profile has been updated.</p>
+          <p className="mt-1 text-sm text-white/70">Your readiness profile and SPEED benchmark have been updated.</p>
         </div>
 
         <div className="mt-6 grid grid-cols-3 gap-3">
@@ -408,7 +428,12 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
   const finishSession = () => {
     const nextResult = buildSessionResult(mode)
     setResult(nextResult)
-    onStartPractice(coach.skill, nextResult.score)
+    onStartPractice(coach.skill, nextResult.score, {
+      sourceId: `practice-${mode}`,
+      sourceTitle: mode === 'pitch' ? 'Pitch Practice' : 'Avatar Roleplay',
+      practiceMode: mode === 'pitch' ? 'pitch' : 'roleplay',
+      speedSignals: buildSpeedSignals(mode, nextResult.score),
+    })
     setAiState('idle')
     setScreen('complete')
   }
@@ -434,7 +459,7 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">{mode === 'roleplay' ? 'Roleplay with AI' : 'Pitch Practice'}</p>
                 <h1 className="mt-2 text-3xl font-black text-slate-950 dark:text-white">Start the coach when you’re ready</h1>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">This session focuses on {coach.skill} and updates readiness after you finish.</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">This session focuses on {coach.skill}</p>
               </div>
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Scenario</p>
@@ -607,7 +632,14 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
               <button
                 key={item.id}
                 type="button"
-                onClick={() => item.id === 'quiz' ? onStartPractice(focusSkill, 76) : openMode(item.id)}
+                      onClick={() => item.id === 'quiz'
+                        ? onStartPractice(focusSkill, 76, {
+                            eventType: 'assessment',
+                            practiceMode: 'quiz',
+                            sourceId: 'practice-quick-quiz',
+                            sourceTitle: 'Quick Quiz',
+                          })
+                        : openMode(item.id)}
                 className={cn('w-full rounded-[28px] border border-white/70 p-4 text-left shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 dark:border-white/10 dark:shadow-[0_16px_40px_rgba(2,6,23,0.28)]', item.shellClassName)}
               >
                 <div className="flex items-center gap-4">
@@ -676,7 +708,12 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
           }}
           onClose={() => setDailyChallengeOpen(false)}
           onComplete={(score) => {
-            onStartPractice(dailyChallenge.skillCategory, score)
+            onStartPractice(dailyChallenge.skillCategory, score, {
+              eventType: 'mini_game',
+              practiceMode: 'quiz',
+              sourceId: dailyChallenge.game.id,
+              sourceTitle: dailyChallenge.game.title,
+            })
             setDailyChallengeOpen(false)
           }}
         />

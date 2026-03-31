@@ -8,6 +8,7 @@ import {
   ChevronLeft, Sparkles, RotateCcw, Lightbulb, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import type { MascotTriggerEvent } from './mascot-overlay'
 import { EpisodeFeed } from './episode-feed'
 import { AssessmentComponent } from './assessment'
 import { JourneyPath } from './journey-path'
@@ -60,6 +61,7 @@ interface CoursesPageProps {
     module: Module
     courseTitle: string
   }) => void
+  onMascotTrigger?: (event: Omit<MascotTriggerEvent, 'id'> & { id?: string }) => void
 }
 
 interface AIRecommendation {
@@ -138,6 +140,7 @@ export function CoursesPage({
   onShareGameScore,
   onShareAssessmentResult,
   onShareModuleReward,
+  onMascotTrigger,
 }: CoursesPageProps) {
   const initialCompletionState = progressState ?? buildInitialCompletionState(courses)
   const [searchQuery, setSearchQuery] = useState('')
@@ -402,9 +405,10 @@ export function CoursesPage({
 	                courseTitle: selectedCourse.title,
 	              })
 	            }}
-	            onPracticeWithAI={handlePracticeWithAI}
-            completedEpisodes={completedEpisodes}
-		            completedGames={completedGames}
+		            onPracticeWithAI={handlePracticeWithAI}
+              onMascotTrigger={onMascotTrigger}
+	            completedEpisodes={completedEpisodes}
+			            completedGames={completedGames}
 		            completedAssessments={completedAssessments}
 		            completedRoleplays={completedRoleplays}
 		            initialEpisodeId={activeEpisodeId ?? undefined}

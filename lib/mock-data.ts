@@ -645,6 +645,40 @@ export const userSkillProfile: UserSkillProfile = {
       timestamp: '2026-03-21T14:10:00.000Z',
     },
   ],
+  speedFramework: {
+    stages: {
+      start_right: {
+        score: 78,
+        updatedAt: '2026-03-20T10:30:00.000Z',
+        sourceTitle: 'Opening pitch practice',
+        practiceMode: 'pitch',
+      },
+      plan_to_probe: {
+        score: 71,
+        updatedAt: '2026-03-19T16:00:00.000Z',
+        sourceTitle: 'Discovery roleplay',
+        practiceMode: 'guided_ai',
+      },
+      explain_value: {
+        score: 82,
+        updatedAt: '2026-03-20T10:30:00.000Z',
+        sourceTitle: 'Technical confidence practice',
+        practiceMode: 'pitch',
+      },
+      eliminate_objection: {
+        score: 69,
+        updatedAt: '2026-03-18T11:20:00.000Z',
+        sourceTitle: 'Price objection roleplay',
+        practiceMode: 'roleplay',
+      },
+      drive_closure: {
+        score: 74,
+        updatedAt: '2026-03-21T09:05:00.000Z',
+        sourceTitle: 'Next-step closing drill',
+        practiceMode: 'guided_ai',
+      },
+    },
+  },
   nextStepPlan: null,
   recommendations: [
     'Practice with AI Coach to strengthen technical confidence in customer conversations',

@@ -11,6 +11,8 @@ import { CoursesPage } from '@/components/lms/courses-page'
 import { SkillRadar } from '@/components/lms/skill-radar'
 import { PracticeScreen } from '@/components/lms/practice-screen'
 import { AIPracticeScreen } from '@/components/lms/ai-practice-screen'
+import { LeagueJourneyPage } from '@/components/lms/league-journey-page'
+import { MascotOverlay, type MascotTriggerEvent } from '@/components/lms/mascot-overlay'
 import { ShareCelebrationCard, type ShareCardData } from '@/components/lms/share-celebration-card'
 import {
   currentUser, stories, allBadges, discussions, peerChallenges,
@@ -22,7 +24,11 @@ import {
   Play, Star, TrendingUp, Brain, Trophy, Users, Check, Send, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getLeague, LEAGUE_INFO } from '@/lib/types'
+import {
+  buildLeagueJourneyState,
+  type LeagueRequirementProgress,
+  type LeagueTierState,
+} from '@/lib/league-system'
 import type {
   CompetencyEvent,
   CompetencyEventType,
@@ -33,6 +39,9 @@ import type {
   Module,
   NextStepPlan,
   SkillCategory,
+  SkillUpdateContext,
+  SpeedPracticeMode,
+  SpeedStageKey,
 } from '@/lib/types'
 
 type CompetencyEventInput = {
@@ -76,6 +85,93 @@ const COMPETENCY_WEIGHTS: Record<CompetencyEventType, number> = {
   mini_game: 0.15,
   module_completion: 0.05,
   ai_practice: 0.45,
+}
+
+const SPEED_SIGNAL_WEIGHT = 0.55
+
+const SPEED_STAGE_KEYS: SpeedStageKey[] = [
+  'start_right',
+  'plan_to_probe',
+  'explain_value',
+  'eliminate_objection',
+  'drive_closure',
+]
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function resolveSpeedPracticeMode(mode?: SkillUpdateContext['practiceMode']): SpeedPracticeMode | undefined {
+  if (mode === 'pitch' || mode === 'roleplay' || mode === 'guided_ai') return mode
+  return undefined
+}
+
+function getDefaultSpeedSignals(mode: SpeedPracticeMode | undefined, score: number): Partial<Record<SpeedStageKey, number>> {
+  switch (mode) {
+    case 'pitch':
+      return {
+        start_right: clampScore(score + 4),
+        plan_to_probe: clampScore(score - 2),
+        explain_value: clampScore(score + 3),
+        eliminate_objection: clampScore(score - 1),
+        drive_closure: clampScore(score + 1),
+      }
+    case 'roleplay':
+      return {
+        start_right: clampScore(score + 1),
+        plan_to_probe: clampScore(score + 4),
+        explain_value: clampScore(score),
+        eliminate_objection: clampScore(score + 5),
+        drive_closure: clampScore(score + 2),
+      }
+    case 'guided_ai':
+      return {
+        start_right: clampScore(score + 2),
+        plan_to_probe: clampScore(score + 2),
+        explain_value: clampScore(score + 2),
+        eliminate_objection: clampScore(score + 2),
+        drive_closure: clampScore(score + 1),
+      }
+    default:
+      return {}
+  }
+}
+
+function applySpeedSignals(
+  profile: typeof userSkillProfile,
+  score: number,
+  context?: SkillUpdateContext,
+) {
+  const practiceMode = resolveSpeedPracticeMode(context?.practiceMode)
+  const incomingSignals = context?.speedSignals ?? getDefaultSpeedSignals(practiceMode, score)
+  const nextStages = { ...profile.speedFramework.stages }
+  let hasUpdates = false
+
+  SPEED_STAGE_KEYS.forEach(stageKey => {
+    const stageScore = incomingSignals[stageKey]
+    if (typeof stageScore !== 'number') return
+
+    const currentStage = nextStages[stageKey]
+    const currentScore = currentStage?.score ?? 0
+
+    nextStages[stageKey] = {
+      ...currentStage,
+      score: clampScore((currentScore * (1 - SPEED_SIGNAL_WEIGHT)) + (stageScore * SPEED_SIGNAL_WEIGHT)),
+      updatedAt: new Date().toISOString(),
+      sourceTitle: context?.sourceTitle ?? currentStage?.sourceTitle,
+      practiceMode: practiceMode ?? currentStage?.practiceMode,
+    }
+    hasUpdates = true
+  })
+
+  if (!hasUpdates) return profile
+
+  return {
+    ...profile,
+    speedFramework: {
+      stages: nextStages,
+    },
+  }
 }
 
 function getSkillGapByCategory(radarData: { communication: number; technical: number; leadership: number; compliance: number }) {
@@ -366,6 +462,39 @@ function createModuleRewardShareCard(payload: {
   }
 }
 
+function getLeagueHomeFocus(requirement: LeagueRequirementProgress | null) {
+  if (!requirement) return 'Top league'
+
+  const remaining = Math.max(requirement.target - requirement.value, 0)
+
+  switch (requirement.key) {
+    case 'xp':
+      return `${remaining.toLocaleString()} XP to go`
+    case 'readiness':
+      return `${remaining} readiness points`
+    case 'videos':
+      return `${remaining} more lessons`
+    case 'assessments':
+      return `${remaining} more quizzes`
+    case 'miniGames':
+      return `${remaining} more mini-games`
+    case 'focusMinutes':
+      return `${remaining} more focus min`
+    case 'speedChecks':
+      return `${remaining} more live wins`
+    default:
+      return requirement.label
+  }
+}
+
+function getLeagueHomeCopy(currentTier: LeagueTierState, nextTier: LeagueTierState | null) {
+  if (!nextTier) {
+    return `You are in ${currentTier.name} League and already at the top of the ladder.`
+  }
+
+  return `You are in ${currentTier.name} League. ${nextTier.name} is next, and a few strong wins will move you closer.`
+}
+
 function PracticePanel({
   profile,
   onSkillUpdate,
@@ -538,6 +667,7 @@ export default function LMSPage() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
   const [practiceView, setPracticeView] = useState<'landing' | 'ai-coach'>('landing')
   const [aiCoachAutoStartFromPlan, setAiCoachAutoStartFromPlan] = useState(false)
+  const [aiCoachKey, setAiCoachKey] = useState(0)
   const [user, setUser] = useState(currentUser)
   const [isDark, setIsDark] = useState(false)
   const [skillProfile, setSkillProfile] = useState(userSkillProfile)
@@ -550,8 +680,20 @@ export default function LMSPage() {
   const [openCourseId, setOpenCourseId] = useState<string | null>(null)
   const [resumeRewardModuleId, setResumeRewardModuleId] = useState<string | null>(null)
   const [xpToast, setXpToast] = useState<{ id: number; xp: number; label?: string } | null>(null)
-  const currentLeague = getLeague(user.xp)
-  const currentLeagueInfo = LEAGUE_INFO[currentLeague]
+  const [mascotEvent, setMascotEvent] = useState<MascotTriggerEvent | null>(null)
+  const leagueJourney = buildLeagueJourneyState({
+    user,
+    profile: skillProfile,
+    progress: courseProgress,
+    courses,
+  })
+  const currentLeagueTier = leagueJourney.currentTier
+  const nextLeagueTier = leagueJourney.nextTier
+  const primaryLeagueFocus = nextLeagueTier
+    ? [...nextLeagueTier.requirements]
+        .filter(requirement => !requirement.met)
+        .sort((left, right) => left.progress - right.progress)[0] ?? null
+    : null
 
   useEffect(() => {
     const stored = localStorage.getItem('theme')
@@ -582,6 +724,13 @@ export default function LMSPage() {
     setXpToast({ id: Date.now(), xp, label })
   }, [])
 
+  const showMascot = useCallback((event: Omit<MascotTriggerEvent, 'id'> & { id?: string }) => {
+    setMascotEvent({
+      ...event,
+      id: event.id ?? `${event.trigger}-${Date.now()}`,
+    })
+  }, [])
+
   const handleCompetencyEvent = useCallback((input: CompetencyEventInput) => {
     const event = createCompetencyEvent(
       input.skillCategory,
@@ -593,17 +742,20 @@ export default function LMSPage() {
     setSkillProfile(prev => applyCompetencyEvent(prev, event))
   }, [])
 
-  const handleSkillUpdate = useCallback((skillCategory: SkillCategory | string, score: number) => {
+  const handleSkillUpdate = useCallback((skillCategory: SkillCategory | string, score: number, context?: SkillUpdateContext) => {
     const typedSkill = skillCategory as SkillCategory
-    const eventType: CompetencyEventType = activeTab === 'practice' ? 'ai_practice' : 'assessment'
-
-    handleCompetencyEvent({
-      type: eventType,
-      skillCategory: typedSkill,
+    const eventType: CompetencyEventType = context?.eventType ?? (activeTab === 'practice' ? 'ai_practice' : 'assessment')
+    const sourceId = context?.sourceId ?? (activeTab === 'practice' ? 'ai-practice-session' : 'course-assessment')
+    const sourceTitle = context?.sourceTitle ?? (activeTab === 'practice' ? 'AI practice' : 'Assessment')
+    const event = createCompetencyEvent(
+      typedSkill,
       score,
-      sourceId: activeTab === 'practice' ? 'ai-practice-session' : 'course-assessment',
-      sourceTitle: activeTab === 'practice' ? 'AI practice' : 'Assessment',
-    })
+      eventType,
+      sourceId,
+      sourceTitle,
+    )
+
+    setSkillProfile(prev => applySpeedSignals(applyCompetencyEvent(prev, event), score, context))
 
     const xpGain = Math.round(score * (eventType === 'ai_practice' ? 0.6 : 0.5))
     setUser(prev => {
@@ -620,8 +772,13 @@ export default function LMSPage() {
         ...streakReward,
       }
     })
-    triggerXPToast(xpGain, eventType === 'ai_practice' ? 'from AI practice' : 'from assessment')
-  }, [activeTab, handleCompetencyEvent, triggerXPToast])
+    const toastLabel = eventType === 'ai_practice'
+      ? 'from AI practice'
+      : eventType === 'mini_game'
+        ? 'game cleared'
+        : 'from assessment'
+    triggerXPToast(xpGain, toastLabel)
+  }, [activeTab, triggerXPToast])
 
   const handleXPGain = useCallback((xp: number, label = 'from practice') => {
     setUser(prev => {
@@ -750,6 +907,7 @@ export default function LMSPage() {
     setAutoPlayCourseId(null)
     setOpenCourseId(null)
     setAiCoachAutoStartFromPlan(false)
+    setAiCoachKey(prev => prev + 1)
     setPracticeView('ai-coach')
     setActiveTab('practice')
   }, [])
@@ -869,21 +1027,30 @@ export default function LMSPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 glass">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <img
-              src={user.avatar || '/placeholder.svg'}
-              alt={user.name}
-              className="w-10 h-10 rounded-full object-cover border-2 border-primary/30"
-            />
-            <div>
-              <span className="font-bold text-sm">Lv.{user.level}</span>
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-yellow-600 dark:text-yellow-400">
-                  {currentLeagueInfo.icon} {currentLeagueInfo.name}
-                </span>
-              </div>
-            </div>
-          </div>
+	          <div className="flex items-center gap-3">
+	            <img
+	              src={user.avatar || '/placeholder.svg'}
+	              alt={user.name}
+	              className="w-10 h-10 rounded-full object-cover border-2 border-primary/30"
+	            />
+	            <div>
+	              <span className="font-bold text-sm">Lv.{user.level}</span>
+	              <div className="mt-1 flex items-center gap-1">
+	                <button
+	                  onClick={() => handleTabChange('leagues')}
+	                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors"
+	                  style={{
+	                    borderColor: currentLeagueTier.theme.accentSoft,
+	                    background: `${currentLeagueTier.theme.accent}18`,
+	                    color: isDark ? '#ffffff' : '#0f172a',
+	                  }}
+	                >
+	                  <Trophy className="h-3.5 w-3.5" />
+	                  {currentLeagueTier.name}
+	                </button>
+	              </div>
+	            </div>
+	          </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-streak/10 px-3 py-1.5 rounded-full">
               <Flame className="w-4 h-4 text-streak" />
@@ -899,7 +1066,18 @@ export default function LMSPage() {
             >
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button className="relative w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
+            <button
+              onClick={() => {
+                showMascot({
+                  trigger: 'chat',
+                  title: 'Nova is online',
+                  message: 'Ask Nova what to do next, where you are weak, or how to keep the streak alive.',
+                  emotion: 'excited',
+                  openChat: true,
+                })
+              }}
+              className="relative w-9 h-9 rounded-full bg-secondary flex items-center justify-center"
+            >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-destructive rounded-full" />
             </button>
@@ -949,17 +1127,6 @@ export default function LMSPage() {
               </div>
             </section>
           </div>
-
-          {/* Daily Tips */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-lg flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
-                Daily Tips
-              </h2>
-            </div>
-            <StoryCircles stories={stories} />
-          </section>
 
           {/* Daily Goals */}
           <DailyGoals user={user} />
@@ -1027,9 +1194,58 @@ export default function LMSPage() {
           </section>
 
           {/* Sales Readiness — compact */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-lg">Sales Readiness</h2>
+	          <section>
+	            <div className="mb-3 flex items-center justify-between">
+	              <h2 className="flex items-center gap-2 text-lg font-bold">
+	                <Trophy className="w-5 h-5 text-amber-500" />
+	                League Journey
+	              </h2>
+	              <button onClick={() => handleTabChange('leagues')} className="flex items-center gap-1 text-sm text-primary">
+	                See ladder <ChevronRight className="w-4 h-4" />
+	              </button>
+	            </div>
+
+	            <button
+	              onClick={() => handleTabChange('leagues')}
+	              className="relative w-full overflow-hidden rounded-[28px] border border-white/10 p-5 text-left text-white shadow-[0_24px_70px_rgba(15,23,42,0.18)] transition-transform duration-300 hover:-translate-y-0.5"
+	              style={{
+	                backgroundImage: `${currentLeagueTier.theme.ambience}, ${currentLeagueTier.theme.texture}, ${currentLeagueTier.theme.haze}`,
+	              }}
+	            >
+	              <div className="absolute inset-x-0 bottom-0 h-24 opacity-80" style={{ backgroundImage: currentLeagueTier.theme.landscape }} />
+	              <div className="absolute -left-10 top-8 h-40 w-40 rounded-full blur-3xl" style={{ background: currentLeagueTier.theme.accentSoft }} />
+	              <div className="absolute right-0 top-10 h-36 w-36 rounded-full blur-3xl" style={{ background: `${currentLeagueTier.theme.highlight}35` }} />
+
+	              <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+	                <div>
+	                  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]">
+	                    <Trophy className="h-3.5 w-3.5" />
+	                    {currentLeagueTier.name}
+	                  </div>
+	                  <h3 className="mt-4 text-3xl font-black">{currentLeagueTier.name} League</h3>
+	                  <p className="mt-2 max-w-2xl text-sm leading-7 text-white/78">
+	                    {getLeagueHomeCopy(currentLeagueTier, nextLeagueTier)}
+	                  </p>
+	                </div>
+
+	                <div className="rounded-[24px] border border-white/10 bg-black/20 p-4 backdrop-blur-xl">
+	                  <p className="text-[10px] uppercase tracking-[0.22em] text-white/45">Best next move</p>
+	                  <p className="mt-2 text-2xl font-black">
+	                    {getLeagueHomeFocus(primaryLeagueFocus)}
+	                  </p>
+	                  <p className="mt-2 text-sm text-white/70">
+	                    {nextLeagueTier
+	                      ? `${nextLeagueTier.progress}% of the way to ${nextLeagueTier.name}.`
+	                      : 'Champion is already locked in.'}
+	                  </p>
+	                </div>
+	              </div>
+	            </button>
+	          </section>
+
+	          <section>
+	            <div className="flex items-center justify-between mb-3">
+	              <h2 className="font-bold text-lg">Sales Readiness</h2>
               <button onClick={() => handleTabChange('profile')} className="text-sm text-primary flex items-center gap-1">
                 View Details <ChevronRight className="w-4 h-4" />
               </button>
@@ -1052,7 +1268,6 @@ export default function LMSPage() {
                 <p className="text-sm text-muted-foreground">Roleplay real sales scenarios &amp; improve your skills</p>
                 <div className="flex items-center gap-2 mt-1.5 text-xs">
                   <span className="bg-violet-500/10 text-violet-500 px-2 py-0.5 rounded-full font-semibold">+50 XP / session</span>
-                  <span className="text-muted-foreground">Updates competency score</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -1135,14 +1350,25 @@ export default function LMSPage() {
             onShareGameScore={handleShareGameScore}
             onShareAssessmentResult={handleShareAssessmentResult}
             onShareModuleReward={handleShareModuleReward}
+            onMascotTrigger={showMascot}
           />
         </div>
       )}
 
       {/* ── Practice Tab ── */}
-      {activeTab === 'practice' && (
+	      {activeTab === 'leagues' && (
+	        <LeagueJourneyPage
+	          user={user}
+	          profile={skillProfile}
+	          progressState={courseProgress}
+	          courses={courses}
+	        />
+	      )}
+
+	      {activeTab === 'practice' && (
         practiceView === 'ai-coach' ? (
           <AIPracticeScreen
+            key={aiCoachKey}
             autoStartFromPlan={aiCoachAutoStartFromPlan}
             profile={skillProfile}
             courses={courses}
@@ -1231,8 +1457,14 @@ export default function LMSPage() {
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+	      {/* Bottom Navigation */}
+	      <BottomNav activeTab={activeTab === 'leagues' ? 'home' : activeTab} onTabChange={handleTabChange} />
+	      <MascotOverlay
+	        activeTab={activeTab}
+	        userName={user.name.split(' ')[0]}
+        skillProfile={skillProfile}
+        event={mascotEvent}
+      />
     </div>
   )
 }

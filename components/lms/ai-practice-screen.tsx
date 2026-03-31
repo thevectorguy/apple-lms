@@ -4,13 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, BookOpen, Brain, CheckCircle2, ChevronLeft, Mic, MicOff, PhoneOff, Sparkles, Target, Timer, TrendingUp, Volume2, X, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { Course, SkillCategory, UserSkillProfile } from '@/lib/types'
+import type { Course, SkillCategory, SkillUpdateContext, SpeedStageKey, UserSkillProfile } from '@/lib/types'
 
 interface AIPracticeScreenProps {
   autoStartFromPlan?: boolean
   profile: UserSkillProfile
   courses: Course[]
-  onSkillUpdate: (skillCategory: SkillCategory, score: number) => void
+  onSkillUpdate: (skillCategory: SkillCategory, score: number, context?: SkillUpdateContext) => void
   onRoleplayComplete?: (roleplayId: string) => void
   onReturnToCourseReward?: (courseId: string, roleplayId: string) => void
   onOpenCourse?: (courseId: string) => void
@@ -413,6 +413,56 @@ function buildPracticeResult(skill: SkillCategory): SessionResult {
   }
 }
 
+function buildGuidedSpeedSignals(
+  skill: SkillCategory,
+  topic: string,
+  score: number,
+): Partial<Record<SpeedStageKey, number>> {
+  const normalizedTopic = topic.toLowerCase()
+  const hasStartCue = /open|opening|hook|intro|start/.test(normalizedTopic)
+  const hasProbeCue = /discover|question|probe|understand|qualif/.test(normalizedTopic)
+  const hasValueCue = /value|pitch|feature|benefit|roi|explain|compare|product/.test(normalizedTopic)
+  const hasObjectionCue = /objection|pushback|price|hesitat|concern/.test(normalizedTopic)
+  const hasCloseCue = /close|closing|next step|next-step|decision|commit/.test(normalizedTopic)
+
+  const cueBoosts = {
+    start_right: hasStartCue ? 2 : 0,
+    plan_to_probe: hasProbeCue ? 2 : 0,
+    explain_value: hasValueCue ? 2 : 0,
+    eliminate_objection: hasObjectionCue ? 2 : 0,
+    drive_closure: hasCloseCue ? 2 : 0,
+  }
+
+  switch (skill) {
+    case 'communication':
+      return {
+        start_right: Math.min(100, score + 2 + cueBoosts.start_right),
+        plan_to_probe: Math.min(100, score + 4 + cueBoosts.plan_to_probe),
+        explain_value: Math.min(100, score + 1 + cueBoosts.explain_value),
+        eliminate_objection: Math.min(100, score + 2 + cueBoosts.eliminate_objection),
+        drive_closure: Math.min(100, score + 1 + cueBoosts.drive_closure),
+      }
+    case 'leadership':
+    case 'compliance':
+      return {
+        start_right: Math.min(100, score + 1 + cueBoosts.start_right),
+        plan_to_probe: Math.min(100, score + 2 + cueBoosts.plan_to_probe),
+        explain_value: Math.min(100, score + 1 + cueBoosts.explain_value),
+        eliminate_objection: Math.min(100, score + 4 + cueBoosts.eliminate_objection),
+        drive_closure: Math.min(100, score + 1 + cueBoosts.drive_closure),
+      }
+    case 'technical':
+    default:
+      return {
+        start_right: Math.min(100, score + 2 + cueBoosts.start_right),
+        plan_to_probe: Math.min(100, score + 1 + cueBoosts.plan_to_probe),
+        explain_value: Math.min(100, score + 4 + cueBoosts.explain_value),
+        eliminate_objection: Math.min(100, score + 1 + cueBoosts.eliminate_objection),
+        drive_closure: Math.min(100, score + 1 + cueBoosts.drive_closure),
+      }
+  }
+}
+
 function SessionAvatar({ aiState }: { aiState: SessionAIState }) {
   return (
     <div className="relative mx-auto flex h-44 w-44 items-center justify-center">
@@ -483,7 +533,7 @@ function PracticeComplete({
             <Sparkles className="h-8 w-8" />
           </div>
           <h2 className="mt-4 text-2xl font-black">Practice complete</h2>
-          <p className="mt-1 text-sm text-white/70">Your readiness profile has been updated.</p>
+          <p className="mt-1 text-sm text-white/70">Your readiness profile and SPEED benchmark have been updated.</p>
         </div>
 
         <div className="mt-6 grid grid-cols-3 gap-3">
@@ -688,8 +738,14 @@ export function AIPracticeScreen({
 
   const finishSession = () => {
     const nextResult = buildPracticeResult(focusSkill)
+    const scenarioLabel = sessionContext?.scenario ?? selectedTopic ?? 'AI Coach Practice'
     setResult(nextResult)
-    onSkillUpdate(focusSkill, nextResult.score)
+    onSkillUpdate(focusSkill, nextResult.score, {
+      sourceId: sessionContext?.roleplayId ?? `guided-ai-${focusSkill}`,
+      sourceTitle: scenarioLabel,
+      practiceMode: 'guided_ai',
+      speedSignals: buildGuidedSpeedSignals(focusSkill, scenarioLabel, nextResult.score),
+    })
     if (sessionContext?.roleplayId) {
       onRoleplayComplete?.(sessionContext.roleplayId)
     }

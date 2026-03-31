@@ -14,6 +14,7 @@ import { AssessmentComponent } from './assessment'
 import { FruitNinjaGame } from './games/fruit-ninja-game'
 import { CardFlipGame } from './games/card-flip-game'
 import { SpeedMcqGame } from './games/speed-mcq-game'
+import type { MascotTriggerEvent } from './mascot-overlay'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -45,6 +46,7 @@ interface EpisodeFeedProps {
   initialAssessmentId?: string
   initialRewardModuleId?: string
   disableAssessments?: boolean
+  onMascotTrigger?: (event: Omit<MascotTriggerEvent, 'id'> & { id?: string }) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -287,6 +289,7 @@ export function EpisodeFeed({
   initialAssessmentId,
   initialRewardModuleId,
   disableAssessments = false,
+  onMascotTrigger,
 }: EpisodeFeedProps) {
   const feedItems = useMemo(() => buildFeedItems(course, disableAssessments), [course, disableAssessments])
   const courseEpisodes = useMemo(() => getCourseEpisodes(course), [course])
@@ -306,6 +309,7 @@ export function EpisodeFeed({
   const [playbackFeedback, setPlaybackFeedback] = useState<'play' | 'pause' | null>(null)
   const completedEpisodeRef = useRef<Set<string>>(new Set())
   const assessmentOutcomeRef = useRef<{ passed: boolean; score: number; assessmentId: string } | null>(null)
+  const mascotMomentsRef = useRef<Set<string>>(new Set())
 
   const containerRef = useRef<HTMLDivElement>(null)
   const y = useMotionValue(0)
@@ -314,6 +318,19 @@ export function EpisodeFeed({
 
   const currentItem = feedItems[currentIndex]
 
+  const triggerMascot = useCallback((
+    eventKey: string,
+    event: Omit<MascotTriggerEvent, 'id'>,
+  ) => {
+    if (!onMascotTrigger) return
+    if (mascotMomentsRef.current.has(eventKey)) return
+    mascotMomentsRef.current.add(eventKey)
+    onMascotTrigger({
+      ...event,
+      id: `${eventKey}-${Date.now()}`,
+    })
+  }, [onMascotTrigger])
+
   useEffect(() => {
     setCurrentIndex(getStartingFeedIndex(feedItems, initialEpisodeId, initialAssessmentId, initialRewardModuleId))
   }, [initialAssessmentId, initialEpisodeId, initialRewardModuleId, feedItems])
@@ -321,6 +338,70 @@ export function EpisodeFeed({
   useEffect(() => {
     completedEpisodeRef.current = new Set(completedEpisodes)
   }, [completedEpisodes])
+
+  useEffect(() => {
+    if (!currentItem) return
+
+    if (currentIndex === 0 && currentItem.type === 'episode') {
+      triggerMascot(`intro-${course.id}`, {
+        trigger: 'intro',
+        title: 'Nova spotted your course run',
+        message: `I am hovering over ${currentItem.episode.title}. Tap me if you want a louder plan than "just keep going."`,
+        emotion: 'waving',
+        courseTitle: course.title,
+        itemTitle: currentItem.episode.title,
+        skill: course.skillCategory,
+      })
+    }
+
+    if (currentItem.type === 'game') {
+      triggerMascot(`game-${currentItem.game.id}`, {
+        trigger: 'hint',
+        title: 'Challenge mode is live',
+        message: `Warm-up is over. ${currentItem.game.title} is where you turn recall into instinct.`,
+        emotion: 'excited',
+        courseTitle: course.title,
+        itemTitle: currentItem.game.title,
+        skill: course.skillCategory,
+      })
+    }
+
+    if (currentItem.type === 'assessment') {
+      triggerMascot(`assessment-${currentItem.assessment.id}`, {
+        trigger: 'hint',
+        title: 'Checkpoint ahead',
+        message: `This one matters. Keep the answer sharp and do not rush the part that tests ${course.skillCategory}.`,
+        emotion: 'waving',
+        courseTitle: course.title,
+        itemTitle: currentItem.assessment.title,
+        skill: course.skillCategory,
+      })
+    }
+
+    if (currentItem.type === 'roleplay') {
+      triggerMascot(`roleplay-${currentItem.roleplay.id}`, {
+        trigger: 'hint',
+        title: 'Nova wants live reps now',
+        message: `This is the part where practice gets real. Open the roleplay and push through the awkward middle.`,
+        emotion: 'excited',
+        courseTitle: course.title,
+        itemTitle: currentItem.roleplay.title,
+        skill: course.skillCategory,
+      })
+    }
+
+    if (currentItem.type === 'reward') {
+      triggerMascot(`reward-${currentItem.module.id}`, {
+        trigger: 'celebrate',
+        title: 'That level landed',
+        message: `Badge energy. Stamp the win, then decide whether you are chaining straight into the next module.`,
+        emotion: 'celebrating',
+        courseTitle: course.title,
+        itemTitle: currentItem.module.title,
+        skill: course.skillCategory,
+      })
+    }
+  }, [course.id, course.skillCategory, course.title, currentIndex, currentItem, triggerMascot])
 
   const isFeedItemCompleted = useCallback((item: FeedItem | undefined) => {
     if (!item) return false
@@ -435,15 +516,42 @@ export function EpisodeFeed({
     return () => clearInterval(interval)
   }, [isPlaying, currentIndex, currentItem?.type])
 
+  useEffect(() => {
+    if (currentItem?.type !== 'episode' || !isPlaying || progress >= 100) return
+
+    const timeout = window.setTimeout(() => {
+      triggerMascot(`idle-${currentItem.episode.id}`, {
+        trigger: 'idle',
+        title: 'Nova noticed the pause',
+        message: `You have been parked on ${currentItem.episode.title} for a minute. Finish this beat or tap me and I will help you unstick it.`,
+        emotion: 'idle',
+        courseTitle: course.title,
+        itemTitle: currentItem.episode.title,
+        skill: course.skillCategory,
+      })
+    }, 12000)
+
+    return () => window.clearTimeout(timeout)
+  }, [course.skillCategory, course.title, currentItem, isPlaying, progress, triggerMascot])
+
   // Auto-complete episode when progress hits 100
   useEffect(() => {
     if (progress >= 100 && currentItem?.type === 'episode' && !completedEpisodeRef.current.has(currentItem.episode.id)) {
       completedEpisodeRef.current.add(currentItem.episode.id)
+      triggerMascot(`episode-complete-${currentItem.episode.id}`, {
+        trigger: 'celebrate',
+        title: 'Clean clear',
+        message: `${currentItem.episode.title} is done. Bank the XP and keep the rhythm moving.`,
+        emotion: 'celebrating',
+        courseTitle: course.title,
+        itemTitle: currentItem.episode.title,
+        skill: course.skillCategory,
+      })
       onEpisodeComplete(currentItem.episode)
       const timeout = window.setTimeout(() => goNext(), 650)
       return () => window.clearTimeout(timeout)
     }
-  }, [goNext, progress, currentItem, onEpisodeComplete])
+  }, [course.skillCategory, course.title, goNext, progress, currentItem, onEpisodeComplete, triggerMascot])
 
   // When reaching an assessment card, show modal
   useEffect(() => {
@@ -491,10 +599,19 @@ export function EpisodeFeed({
 
   const handleGameFinish = useCallback((score: number, xpEarned: number) => {
     if (!activeGame) return
+    triggerMascot(`game-clear-${activeGame.id}`, {
+      trigger: 'celebrate',
+      title: 'Challenge cleared',
+      message: `${activeGame.title} is done. That was the right kind of loud.`,
+      emotion: 'celebrating',
+      courseTitle: course.title,
+      itemTitle: activeGame.title,
+      skill: course.skillCategory,
+    })
     onGameComplete?.(activeGame, score, xpEarned)
     setActiveGame(null)
     window.setTimeout(() => goNext(), 200)
-  }, [activeGame, goNext, onGameComplete])
+  }, [activeGame, course.skillCategory, course.title, goNext, onGameComplete, triggerMascot])
 
   const renderGame = () => {
     if (!activeGame) return null
@@ -519,6 +636,17 @@ export function EpisodeFeed({
           assessment={currentItem.assessment}
           onComplete={(passed, score) => {
             assessmentOutcomeRef.current = { passed, score, assessmentId: currentItem.assessment.id }
+            triggerMascot(`${passed ? 'assessment-pass' : 'assessment-retry'}-${currentItem.assessment.id}`, {
+              trigger: passed ? 'celebrate' : 'hint',
+              title: passed ? 'Checkpoint secured' : 'Nova wants a rematch',
+              message: passed
+                ? `You cleared ${currentItem.assessment.title}. Keep the heat on while the ideas are still fresh.`
+                : `That checkpoint pushed back. Tap me if you want the cleanest retry angle before you run it again.`,
+              emotion: passed ? 'celebrating' : 'excited',
+              courseTitle: course.title,
+              itemTitle: currentItem.assessment.title,
+              skill: course.skillCategory,
+            })
             onAssessmentComplete(passed, score, currentItem.assessment)
           }}
           onShareResult={({ score }) => onAssessmentShare?.(currentItem.assessment, score)}
@@ -688,7 +816,23 @@ export function EpisodeFeed({
             <span className="text-xs font-semibold text-white drop-shadow-lg">{fmt(ep.xp)}</span>
           </motion.button>
 
-          <motion.button whileTap={{ scale: 0.9 }} className="flex flex-col items-center gap-1">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              onMascotTrigger?.({
+                id: `chat-${ep.id}-${Date.now()}`,
+                trigger: 'chat',
+                title: `Nova opened from ${ep.title}`,
+                message: `Ask about ${ep.title}, your next move, or how to clean up the weak spots before the next checkpoint.`,
+                emotion: 'excited',
+                courseTitle: course.title,
+                itemTitle: ep.title,
+                skill: course.skillCategory,
+                openChat: true,
+              })
+            }}
+            className="flex flex-col items-center gap-1"
+          >
             <MessageCircle className="w-7 h-7 text-white drop-shadow-lg" />
             <span className="text-xs font-semibold text-white drop-shadow-lg">Chat</span>
           </motion.button>

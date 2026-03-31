@@ -1,9 +1,9 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { Home, BookOpen, Trophy, Users, User, Brain } from 'lucide-react'
+import { Home, BookOpen, Users, User, Brain } from 'lucide-react'
 
-export type Tab = 'home' | 'courses' | 'challenges' | 'community' | 'profile' | 'practice'
+export type Tab = 'home' | 'courses' | 'leagues' | 'community' | 'profile' | 'practice'
 
 interface BottomNavProps {
   activeTab: Tab

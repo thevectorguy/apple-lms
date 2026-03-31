@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import type { SkillCategory } from '@/lib/types'
+import type { SkillCategory, SpeedStageKey } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { Brain, ChevronRight, MessageSquare, Sparkles, Target, Zap } from 'lucide-react'
+import { Brain, CheckCircle2, ChevronRight, MessageSquare, Play, Search, Sparkles, Target, TrendingUp, Zap } from 'lucide-react'
 import {
   SkillReadinessDetailPanel,
   type SkillRadarProfile,
@@ -21,6 +21,14 @@ const skillLabels = [
   { key: 'technical' as SkillCategory, label: 'Technical', icon: Brain, position: 'right', tone: 'from-cyan-500 to-sky-500' },
   { key: 'leadership' as SkillCategory, label: 'Leadership', icon: Target, position: 'bottom', tone: 'from-amber-500 to-orange-500' },
   { key: 'compliance' as SkillCategory, label: 'Compliance', icon: Zap, position: 'left', tone: 'from-emerald-500 to-teal-500' },
+] as const
+
+const speedStageLabels = [
+  { key: 'start_right' as SpeedStageKey, label: 'Start Right', icon: Play, tone: 'from-violet-500 to-fuchsia-500' },
+  { key: 'plan_to_probe' as SpeedStageKey, label: 'Plan to Probe', icon: Search, tone: 'from-sky-500 to-cyan-500' },
+  { key: 'explain_value' as SpeedStageKey, label: 'Explain Value', icon: MessageSquare, tone: 'from-amber-500 to-orange-500' },
+  { key: 'eliminate_objection' as SpeedStageKey, label: 'Eliminate Objection', icon: CheckCircle2, tone: 'from-emerald-500 to-teal-500' },
+  { key: 'drive_closure' as SpeedStageKey, label: 'Drive Closure', icon: TrendingUp, tone: 'from-rose-500 to-pink-500' },
 ] as const
 
 function getSkillGap(profile: SkillRadarProfile, skill: SkillCategory) {
@@ -90,6 +98,11 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
   const strongAreas = profile.strongAreas ?? []
   const nextStep = getNextStepCopy(profile)
   const weakestSkill = getWeakestSkill(profile)
+  const speedCheckedCount = Object.values(profile.speedFramework.stages).filter(stage => stage.score >= 80).length
+  const speedStages = speedStageLabels.map(stage => ({
+    ...stage,
+    value: profile.speedFramework.stages[stage.key]?.score ?? 0,
+  }))
 
   const openDetail = (skill: SkillCategory = weakestSkill) => {
     setDetailSkill(skill)
@@ -187,7 +200,9 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3">
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Focus areas</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Focus areas</h4>
+                </div>
                 <button
                   type="button"
                   onClick={() => openDetail()}
@@ -409,7 +424,7 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
                   </p>
                   <p className="mt-1 text-lg font-black">{getSkillLabel(weakestSkill)}</p>
                   <p className="mt-1 text-sm text-white/70">
-                    Focused practice here will lift the profile fastest.
+                    Focused practice here will lift your profile fastest.
                   </p>
                 </div>
 
@@ -495,6 +510,62 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
                   </div>
                   <ChevronRight className="h-4 w-4 text-slate-400" />
                 </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.06)] dark:border-cyan-950/60 dark:bg-[linear-gradient(180deg,rgba(13,24,42,0.98)_0%,rgba(16,30,50,0.98)_100%)] dark:shadow-[0_16px_40px_rgba(2,6,23,0.36)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                SPEED stages
+              </p>
+              <h3 className="mt-1 text-lg font-black text-slate-950">Live sales conversation breakdown</h3>
+            </div>
+            <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/12 dark:text-emerald-300">
+              {speedCheckedCount}/5 checked
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {speedStages.map(({ key, label, icon: Icon, tone, value }) => {
+              const checked = value >= 80
+
+              return (
+                <div
+                  key={key}
+                  className={cn(
+                    'flex items-center gap-3 rounded-2xl border px-4 py-3',
+                    checked
+                      ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-500/25 dark:bg-emerald-500/10'
+                      : 'border-slate-200 bg-slate-50/70 dark:border-white/10 dark:bg-slate-900/70',
+                  )}
+                >
+                  <div className={cn('flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-sm', tone)}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{label}</span>
+                      <span className={cn('text-sm font-black', checked ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-900 dark:text-white')}>
+                        {value}%
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800">
+                      <div
+                        className={cn(
+                          'h-2 rounded-full bg-gradient-to-r transition-all duration-500',
+                          checked ? 'from-emerald-500 to-cyan-500' : 'from-primary to-accent',
+                        )}
+                        style={{ width: `${value}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      {checked ? 'At benchmark in live practice' : `${Math.max(0, 80 - value)}% to benchmark`}
+                    </p>
+                  </div>
+                </div>
               )
             })}
           </div>
