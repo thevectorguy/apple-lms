@@ -19,6 +19,7 @@ import {
   sharedAchievements, courses, userSkillProfile,
 } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+import { motion, useReducedMotion } from 'framer-motion'
 import {
   Bell, Flame, Zap, Sun, Moon, Sparkles, Clock, ChevronRight,
   Play, Star, TrendingUp, Brain, Trophy, Users, Check, Send, X,
@@ -515,7 +516,7 @@ function PracticePanel({
             <p className="mt-2 max-w-xl text-sm text-slate-600">
               Keep the flow moving with a focused practice round.
             </p>
-          </div>
+wo        </div>
           <div className="rounded-2xl bg-slate-950 px-4 py-3 text-right text-white">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/55">Current focus</p>
             <p className="mt-1 text-sm font-bold">{focusLabel}</p>
@@ -681,6 +682,7 @@ export default function LMSPage() {
   const [resumeRewardModuleId, setResumeRewardModuleId] = useState<string | null>(null)
   const [xpToast, setXpToast] = useState<{ id: number; xp: number; label?: string } | null>(null)
   const [mascotEvent, setMascotEvent] = useState<MascotTriggerEvent | null>(null)
+  const prefersReducedMotion = useReducedMotion()
   const leagueJourney = buildLeagueJourneyState({
     user,
     profile: skillProfile,
@@ -1008,9 +1010,70 @@ export default function LMSPage() {
   }, [])
 
   const inProgressCourse = courses.find(c => c.status === 'in_progress')
+  const firstName = user.name.split(' ')[0]
+  const nextEpisode = inProgressCourse?.episodes.find(episode => !episode.completed && !episode.locked) ?? null
+  const progressEpisodes = inProgressCourse?.episodes.filter(episode => episode.completed).length ?? 0
+  const courseProgressPercent = inProgressCourse ? (progressEpisodes / inProgressCourse.episodes.length) * 100 : 0
+  const unlockedBadges = user.badges.filter(badge => !badge.locked)
+  const recommendationCards = skillProfile.weakAreas
+    .slice(0, 2)
+    .map(area => courses.find(course => course.skillCategory === area && course.status !== 'completed'))
+    .filter((course): course is Course => Boolean(course))
+  const streakDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const quickStats = [
+    {
+      label: 'Streak',
+      value: `${user.streak} days`,
+      helper: '+50 XP daily',
+      icon: Flame,
+      tint: 'text-amber-500',
+      glow: 'from-amber-300/65 via-orange-200/35 to-transparent dark:from-amber-300/22 dark:via-orange-400/10',
+    },
+    {
+      label: 'Readiness',
+      value: `${skillProfile.readinessScore}%`,
+      helper: skillProfile.weakAreas[0] ? `Boost ${skillProfile.weakAreas[0]}` : 'All core skills on track',
+      icon: Sparkles,
+      tint: 'text-sky-500',
+      glow: 'from-sky-300/65 via-blue-200/35 to-transparent dark:from-sky-300/22 dark:via-blue-400/10',
+    },
+    {
+      label: 'XP',
+      value: user.xp.toLocaleString(),
+      helper: `${user.xpToNextLevel} to next level`,
+      icon: Zap,
+      tint: 'text-indigo-500',
+      glow: 'from-indigo-300/65 via-violet-200/35 to-transparent dark:from-indigo-300/22 dark:via-violet-400/10',
+    },
+  ] as const
+
+  const getRevealProps = (delay = 0) => {
+    if (prefersReducedMotion) {
+      return {
+        initial: { opacity: 1, y: 0, scale: 1 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        transition: { duration: 0 },
+      }
+    }
+
+    return {
+      initial: { opacity: 0, y: 18, scale: 0.985 },
+      animate: { opacity: 1, y: 0, scale: 1 },
+      transition: { type: 'spring' as const, stiffness: 230, damping: 24, delay },
+    }
+  }
+
+  const hoverLift = prefersReducedMotion ? undefined : { y: -4, scale: 1.01 }
+  const subtleHover = prefersReducedMotion ? undefined : { y: -2 }
+  const pressDown = prefersReducedMotion ? undefined : { scale: 0.985 }
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="relative min-h-screen overflow-x-hidden pb-32">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[28rem]">
+        <div className="absolute left-[-4rem] top-[-3rem] h-56 w-56 rounded-full bg-sky-300/30 blur-3xl dark:bg-sky-500/14" />
+        <div className="absolute right-[-3rem] top-10 h-60 w-60 rounded-full bg-white/80 blur-3xl dark:bg-indigo-400/12" />
+        <div className="absolute left-1/2 top-32 h-48 w-48 -translate-x-1/2 rounded-full bg-cyan-200/35 blur-3xl dark:bg-cyan-400/10" />
+      </div>
       {/* XP Toast */}
       {xpToast && (
         <XPToast key={xpToast.id} xp={xpToast.xp} label={xpToast.label} onDone={() => setXpToast(null)} />
@@ -1025,112 +1088,551 @@ export default function LMSPage() {
       )}
 
       {/* Header */}
-      <header className="sticky top-0 z-40 glass">
-        <div className="flex items-center justify-between px-4 py-3">
-	          <div className="flex items-center gap-3">
-	            <img
-	              src={user.avatar || '/placeholder.svg'}
-	              alt={user.name}
-	              className="w-10 h-10 rounded-full object-cover border-2 border-primary/30"
-	            />
-	            <div>
-	              <span className="font-bold text-sm">Lv.{user.level}</span>
-	              <div className="mt-1 flex items-center gap-1">
-	                <button
-	                  onClick={() => handleTabChange('leagues')}
-	                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors"
-	                  style={{
-	                    borderColor: currentLeagueTier.theme.accentSoft,
-	                    background: `${currentLeagueTier.theme.accent}18`,
-	                    color: isDark ? '#ffffff' : '#0f172a',
-	                  }}
-	                >
-	                  <Trophy className="h-3.5 w-3.5" />
-	                  {currentLeagueTier.name}
-	                </button>
-	              </div>
-	            </div>
-	          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-streak/10 px-3 py-1.5 rounded-full">
-              <Flame className="w-4 h-4 text-streak" />
-              <span className="font-bold text-sm text-streak">{user.streak}</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-primary px-3 py-1.5 rounded-full">
-              <Zap className="w-4 h-4 text-primary-foreground" />
-              <span className="font-bold text-sm text-primary-foreground">{user.xp.toLocaleString()}</span>
-            </div>
-            <button
-              onClick={toggleTheme}
-              className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+      <header className="sticky top-0 z-40 px-4 pt-4">
+        <motion.div
+          {...getRevealProps(0.03)}
+          className="ios-shell relative overflow-hidden rounded-[2rem] px-4 py-3"
+        >
+          <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/75 dark:bg-white/20" />
+          <div className="absolute -left-10 top-0 h-20 w-24 rounded-full bg-sky-200/50 blur-3xl dark:bg-sky-400/10" />
+          <div className="absolute right-0 top-0 h-20 w-28 rounded-full bg-white/70 blur-3xl dark:bg-indigo-400/12" />
+
+          <div className="relative flex items-center justify-between gap-3">
+            <motion.button
+              whileHover={subtleHover}
+              whileTap={pressDown}
+              onClick={() => handleTabChange('profile')}
+              className="flex min-w-0 items-center gap-3 text-left"
             >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={() => {
-                showMascot({
-                  trigger: 'chat',
-                  title: 'Nova is online',
-                  message: 'Ask Nova what to do next, where you are weak, or how to keep the streak alive.',
-                  emotion: 'excited',
-                  openChat: true,
-                })
-              }}
-              className="relative w-9 h-9 rounded-full bg-secondary flex items-center justify-center"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-destructive rounded-full" />
-            </button>
+              <img
+                src={user.avatar || '/placeholder.svg'}
+                alt={user.name}
+                className="h-12 w-12 rounded-[1.1rem] object-cover ring-1 ring-white/70 shadow-[0_14px_28px_-18px_rgba(15,23,42,0.4)]"
+              />
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground/80">Dashboard</p>
+                <h1 className="truncate text-[1.08rem] font-bold tracking-[-0.03em] text-foreground">
+                  {firstName}
+                </h1>
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>Level {user.level}</span>
+                  <span className="h-1 w-1 rounded-full bg-foreground/20" />
+                  <span>{currentLeagueTier.name} tier</span>
+                </div>
+              </div>
+            </motion.button>
+
+            <div className="flex items-center gap-2">
+              <div className="ios-frost hidden rounded-full px-3 py-2 sm:flex sm:items-center sm:gap-2">
+                <Flame className="h-4 w-4 text-amber-500" />
+                <div className="leading-none">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Streak</p>
+                  <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{user.streak} days</p>
+                </div>
+              </div>
+
+              <div className="ios-frost hidden rounded-full px-3 py-2 md:flex md:items-center md:gap-2">
+                <Zap className="h-4 w-4 text-primary" />
+                <div className="leading-none">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">XP</p>
+                  <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{user.xp.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={subtleHover}
+                whileTap={pressDown}
+                onClick={toggleTheme}
+                className="ios-icon-button flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
+              >
+                {isDark ? <Sun className="h-[1.05rem] w-[1.05rem]" /> : <Moon className="h-[1.05rem] w-[1.05rem]" />}
+              </motion.button>
+
+              <motion.button
+                whileHover={subtleHover}
+                whileTap={pressDown}
+                onClick={() => {
+                  showMascot({
+                    trigger: 'chat',
+                    title: 'Nova is online',
+                    message: 'Ask Nova what to do next, where you are weak, or how to keep the streak alive.',
+                    emotion: 'excited',
+                    openChat: true,
+                  })
+                }}
+                className="ios-icon-button relative flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
+              >
+                <Bell className="h-[1.05rem] w-[1.05rem]" />
+                <span className="absolute right-[0.72rem] top-[0.72rem] h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_0_4px_rgba(255,255,255,0.68)] dark:shadow-[0_0_0_4px_rgba(15,23,42,0.42)]" />
+              </motion.button>
+            </div>
           </div>
-        </div>
+        </motion.div>
       </header>
 
       {/* ── Home Tab ── */}
       {activeTab === 'home' && (
-        <div className="space-y-6 px-4 py-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-center">
-            <div>
-              <h1 className="text-2xl font-bold">Hey, {user.name.split(' ')[0]}!</h1>
-              <p className="text-muted-foreground">Ready to level up today?</p>
-            </div>
+        <div className="space-y-5 px-4 pb-6 pt-3">
+          <motion.section
+            {...getRevealProps(0.08)}
+            className="ios-shell relative overflow-hidden rounded-[2.35rem] p-5 sm:p-6"
+          >
+            <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/75 dark:bg-white/18" />
+            <div className="absolute -left-16 top-0 h-36 w-36 rounded-full bg-sky-200/55 blur-3xl dark:bg-sky-500/10" />
+            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/90 blur-3xl dark:bg-indigo-400/12" />
+            <div className="absolute bottom-0 left-1/3 h-28 w-28 rounded-full bg-cyan-200/35 blur-3xl dark:bg-cyan-400/8" />
 
-            <section className="glass-card w-full rounded-2xl px-4 py-3">
-              <div className="grid gap-3 sm:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] sm:items-center">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-                    <Flame className="h-5 w-5 text-primary-foreground" />
+            <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)] xl:items-start">
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="max-w-xl">
+
+                    <div className="mt-4 flex items-center gap-3">
+                      <h2 className="text-[2.28rem] font-black tracking-[-0.078em] text-foreground sm:text-[2.85rem]">
+                        hey {firstName.toLowerCase()}
+                      </h2>
+                      <motion.div
+                        initial={prefersReducedMotion ? { rotate: 0, scale: 1 } : { rotate: -12, scale: 0.95 }}
+                        animate={prefersReducedMotion ? { rotate: 0, scale: 1 } : { rotate: [0, 16, -10, 10, 0], scale: [1, 1.06, 1, 1.04, 1] }}
+                        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.85, delay: 0.18 }}
+                        className="ios-frost flex h-9 w-9 items-center justify-center rounded-full text-[0px]"
+                      >
+                        👋
+                        <Sparkles className="h-4.5 w-4.5 text-primary" />
+                      </motion.div>
+                    </div>
+                    <p className="mt-3 max-w-2xl text-[0.96rem] font-medium leading-6 text-muted-foreground">
+                      Your next lesson, practice round, and progress signals are ready below without the screen feeling busy.
+                    </p>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Current Streak</p>
-                    <p className="text-lg font-bold leading-tight">{user.streak} day streak</p>
-                    <p className="text-xs text-muted-foreground">Keep it up. <span className="font-semibold text-primary">+50 XP daily</span></p>
-                  </div>
+
+                  <motion.button                    whileHover={subtleHover}
+                    whileTap={pressDown}
+                    onClick={() => handleTabChange('leagues')}
+                    className="ios-frost flex items-center gap-2 rounded-full px-3 py-2 text-left"
+                    style={{
+                      borderColor: currentLeagueTier.theme.accentSoft,
+                      background: `${currentLeagueTier.theme.accent}16`,
+                    }}
+                  >
+                    <Trophy className="h-4 w-4" style={{ color: currentLeagueTier.theme.highlight }} />
+                    <div className="leading-none">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">League</p>
+                      <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{currentLeagueTier.name}</p>
+                    </div>
+                  </motion.button>
                 </div>
 
-                <div className="grid w-full grid-cols-7 gap-1.5">
-                  {['T', 'F', 'S', 'S', 'M', 'T', 'W'].map((day, idx) => {
-                    const isActive = idx < Math.min(user.streak, 7)
-                    return (
-                      <div
-                        key={idx}
-                        className={cn(
-                          'flex h-10 min-w-0 flex-col items-center justify-center rounded-xl transition-all',
-                          isActive ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground',
-                        )}
-                      >
-                        <Flame className="h-3.5 w-3.5" />
-                        <span className="text-[10px] font-semibold leading-none">{day}</span>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {quickStats.map(({ label, value, helper, icon: Icon, tint, glow }, index) => (
+                    <motion.div
+                      key={label}
+                      initial={getRevealProps(0.12 + (index * 0.05)).initial}
+                      animate={getRevealProps(0.12 + (index * 0.05)).animate}
+                      transition={getRevealProps(0.12 + (index * 0.05)).transition}
+                      whileHover={hoverLift}
+                      className="ios-frost relative overflow-hidden rounded-[1.45rem] px-3 py-3.5"
+                    >
+                      <div className={cn('absolute inset-0 bg-gradient-to-br opacity-80', glow)} />
+                      <div className="relative flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                          <p className="mt-2 truncate text-[1.18rem] font-bold tracking-[-0.045em] text-foreground sm:text-[1.28rem]">
+                            {value}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground max-sm:hidden">{helper}</p>
+                        </div>
+                        <div className="ios-icon-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9">
+                          <Icon className={cn('h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]', tint)} />
+                        </div>
                       </div>
-                    )
-                  })}
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="ios-frost rounded-[1.7rem] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Consistency</p>
+                      <p className="mt-1 text-sm font-bold tracking-[-0.02em] text-foreground">
+                        {Math.min(user.streak, 7)}/7 days lit this week
+                      </p>
+                    </div>
+                    <div className="rounded-full bg-white/65 px-3 py-1 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-white/10 dark:text-white">
+                      +50 XP daily
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-7 gap-2">
+                    {streakDays.map((day, index) => {
+                      const isActive = index < Math.min(user.streak, 7)
+
+                      return (
+                        <motion.div
+                          key={`${day}-${index}`}
+                          whileHover={subtleHover}
+                          className={cn(
+                            'rounded-[1.2rem] border px-2 py-2.5 text-center transition-colors',
+                            isActive
+                              ? 'border-white/80 bg-white/80 text-foreground shadow-[0_14px_26px_-18px_rgba(59,130,246,0.45)] dark:border-white/12 dark:bg-white/12 dark:text-white'
+                              : 'border-white/50 bg-white/35 text-muted-foreground dark:border-white/8 dark:bg-white/5'
+                          )}
+                        >
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">{day}</p>
+                          <Flame className={cn('mx-auto mt-2 h-3.5 w-3.5', isActive ? 'text-amber-500' : 'text-muted-foreground/60')} />
+                        </motion.div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
-            </section>
+
+              {inProgressCourse ? (
+                <motion.button
+                  whileHover={hoverLift}
+                  whileTap={pressDown}
+                  onClick={() => handleContinueLearning(inProgressCourse.id)}
+                  className="ios-frost group relative overflow-hidden rounded-[2rem] p-4 text-left"
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.75),transparent_34%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent_34%)]" />
+                  <div className="relative">
+                    <div className="relative overflow-hidden rounded-[1.55rem]">
+                      <img
+                        src={inProgressCourse.thumbnail || '/placeholder.svg'}
+                        alt={inProgressCourse.title}
+                        className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/82 via-slate-950/30 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-white/18 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-md">
+                          <Play className="h-3.5 w-3.5 fill-white" />
+                          Continue learning
+                        </div>
+                        <h3 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.05em] text-white">
+                          {inProgressCourse.title}
+                        </h3>
+                        <p className="mt-1 text-sm text-white/78">
+                          {nextEpisode ? `Next episode: ${nextEpisode.title}` : 'Your next lesson is ready.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Course progress</p>
+                          <p className="mt-1 text-base font-bold tracking-[-0.03em] text-foreground">
+                            {progressEpisodes}/{inProgressCourse.episodes.length} episodes complete
+                          </p>
+                        </div>
+                        <div className="rounded-full bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-white/12">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Progress</p>
+                          <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
+                            {Math.round(courseProgressPercent)}%
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="h-2 rounded-full bg-white/55 dark:bg-white/8">
+                        <motion.div
+                          initial={{ width: prefersReducedMotion ? `${courseProgressPercent}%` : 0 }}
+                          animate={{ width: `${courseProgressPercent}%` }}
+                          transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.24, duration: 0.7, ease: 'easeOut' }}
+                          className="h-full rounded-full bg-gradient-to-r from-primary via-accent to-sky-300"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{nextEpisode ? nextEpisode.title : 'Course ready to resume'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-sm font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-white/12 dark:text-white">
+                          <span>{nextEpisode ? `+${nextEpisode.xp} XP` : 'Resume now'}</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={hoverLift}
+                  whileTap={pressDown}
+                  onClick={() => handleTabChange('courses')}
+                  className="ios-frost flex min-h-[22rem] items-center justify-center rounded-[2rem] p-5 text-left"
+                >
+                  <div className="max-w-sm text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Courses</p>
+                    <h3 className="mt-4 text-3xl font-semibold tracking-[-0.06em] text-foreground">Your next path is ready.</h3>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      Jump into the next course and keep the streak moving without losing momentum.
+                    </p>
+                  </div>
+                </motion.button>
+              )}
+            </div>
+          </motion.section>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.04fr)_minmax(300px,0.96fr)]">
+            <motion.div {...getRevealProps(0.16)} whileHover={hoverLift}>
+              <DailyGoals user={user} />
+            </motion.div>
+
+            <motion.button
+              {...getRevealProps(0.2)}
+              whileHover={hoverLift}
+              whileTap={pressDown}
+              onClick={openAIPracticeCoach}
+              className="ios-shell relative overflow-hidden rounded-[2.15rem] p-4 text-left"
+            >
+              <div className="absolute -right-8 top-0 h-32 w-32 rounded-full bg-violet-200/50 blur-3xl dark:bg-violet-500/14" />
+              <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-sky-200/45 blur-3xl dark:bg-sky-500/10" />
+
+              <div className="relative">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="ios-frost flex h-12 w-12 items-center justify-center rounded-[1.3rem]">
+                    <Brain className="h-6 w-6 text-violet-500" />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="ios-frost flex h-11 w-11 items-center justify-center rounded-full">
+                      <div className="flex items-end gap-0.5">
+                        <span className="h-2.5 w-1 rounded-full bg-violet-500/65" />
+                        <span className="h-4 w-1 rounded-full bg-fuchsia-500/75" />
+                        <span className="h-3 w-1 rounded-full bg-sky-500/70" />
+                      </div>
+                    </div>
+                    <div className="ios-frost rounded-full px-3 py-2 text-right">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current focus</p>
+                      <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
+                        {skillProfile.weakAreas[0] ? skillProfile.weakAreas[0].charAt(0).toUpperCase() + skillProfile.weakAreas[0].slice(1) : 'All skills'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="mt-4 text-[1.72rem] font-bold tracking-[-0.055em] text-foreground">
+                  Practice with Nova
+                </h3>
+                <p className="mt-2.5 text-sm leading-6 text-muted-foreground">
+                  Run a guided roleplay, get feedback immediately, and keep your readiness signal moving in the right direction.
+                </p>
+
+                <div className="mt-4 grid grid-cols-3 gap-2.5">
+                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Readiness</p>
+                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">{skillProfile.readinessScore}%</p>
+                  </div>
+                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gap</p>
+                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">
+                      {skillProfile.weakAreas[0] ? `${skillProfile.skillGapByCategory[skillProfile.weakAreas[0]]}%` : '0%'}
+                    </p>
+                  </div>
+                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Signals</p>
+                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">{skillProfile.competencyHistory.length}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-muted-foreground">+50 XP each focused session</p>
+                  <div className="flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_34px_-20px_rgba(15,23,42,0.9)] dark:bg-white dark:text-slate-950">
+                    Start session
+                    <ChevronRight className="h-4 w-4" />
+                  </div>
+                </div>
+              </div>
+            </motion.button>
           </div>
 
-          {/* Daily Goals */}
-          <DailyGoals user={user} />
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
+            <motion.button
+              {...getRevealProps(0.24)}
+              whileHover={hoverLift}
+              whileTap={pressDown}
+              onClick={() => handleTabChange('leagues')}
+              className="ios-shell relative overflow-hidden rounded-[2.15rem] p-5 text-left"
+              style={{
+                backgroundImage: isDark
+                  ? `linear-gradient(180deg,rgba(10,16,27,0.18)_0%,rgba(10,16,27,0.08)_100%), ${currentLeagueTier.theme.ambience}, var(--glass-bg)`
+                  : `linear-gradient(180deg,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.46)_100%), ${currentLeagueTier.theme.ambience}, var(--glass-bg)`,
+              }}
+            >
+              <div className="absolute inset-x-0 bottom-0 h-28 opacity-60" style={{ backgroundImage: currentLeagueTier.theme.landscape }} />
+              <div className="absolute -left-10 top-8 h-40 w-40 rounded-full blur-3xl" style={{ background: `${currentLeagueTier.theme.accentSoft}B0` }} />
+              <div className="absolute right-0 top-10 h-36 w-36 rounded-full blur-3xl" style={{ background: `${currentLeagueTier.theme.highlight}22` }} />
 
+              <div className="relative grid gap-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/42 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground dark:border-white/10 dark:bg-white/8 dark:text-white">
+                    <Trophy className="h-3.5 w-3.5" style={{ color: currentLeagueTier.theme.highlight }} />
+                    {currentLeagueTier.name} league
+                  </div>
+                  <div className="rounded-full bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-white/12">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next move</p>
+                    <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
+                      {nextLeagueTier ? `${nextLeagueTier.progress}% to ${nextLeagueTier.name}` : 'Top tier reached'}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-[1.78rem] font-bold tracking-[-0.055em] text-foreground dark:text-white">
+                    Keep climbing in flow.
+                  </h3>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-foreground/72 dark:text-white/72">
+                    {getLeagueHomeCopy(currentLeagueTier, nextLeagueTier)}
+                  </p>
+                </div>
+
+                <div className="rounded-[1.6rem] border border-white/60 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-white/10 dark:bg-white/8">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Best next action</p>
+                  <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground dark:text-white">
+                    {getLeagueHomeFocus(primaryLeagueFocus)}
+                  </p>
+                  <div className="mt-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{nextLeagueTier ? `${nextLeagueTier.name} is within reach this week.` : 'You are already sitting at the top.'}</span>
+                  </div>
+                </div>
+              </div>
+            </motion.button>
+
+            <motion.div {...getRevealProps(0.28)} className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Profile signal</p>
+                  <h3 className="mt-1 text-lg font-bold tracking-[-0.04em] text-foreground">Sales readiness</h3>
+                </div>
+                <motion.button
+                  whileHover={subtleHover}
+                  whileTap={pressDown}
+                  onClick={() => handleTabChange('profile')}
+                  className="flex items-center gap-1 text-sm font-medium text-primary"
+                >
+                  View details
+                  <ChevronRight className="h-4 w-4" />
+                </motion.button>
+              </div>
+              <motion.div whileHover={hoverLift}>
+                <SkillRadar profile={skillProfile} compact />
+              </motion.div>
+            </motion.div>
+          </div>
+
+          <motion.section
+            {...getRevealProps(0.32)}
+            whileHover={hoverLift}
+            className="ios-shell relative overflow-hidden rounded-[2.15rem] p-5"
+          >
+            <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-amber-200/40 blur-3xl dark:bg-amber-500/10" />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Continue improving</p>
+                <h3 className="mt-1 text-[1.55rem] font-bold tracking-[-0.05em] text-foreground">
+                  Recommendations and recent wins
+                </h3>
+              </div>
+
+              <motion.button
+                whileHover={subtleHover}
+                whileTap={pressDown}
+                onClick={() => handleTabChange('courses')}
+                className="flex items-center gap-1 text-sm font-medium text-primary"
+              >
+                View all courses
+                <ChevronRight className="h-4 w-4" />
+              </motion.button>
+            </div>
+
+            <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(280px,0.92fr)]">
+              <div className="space-y-3">
+                {recommendationCards.length > 0 ? recommendationCards.map((rec, index) => (
+                  <motion.button
+                    key={rec.id}
+                    initial={getRevealProps(0.36 + (index * 0.04)).initial}
+                    animate={getRevealProps(0.36 + (index * 0.04)).animate}
+                    transition={getRevealProps(0.36 + (index * 0.04)).transition}
+                    whileHover={hoverLift}
+                    whileTap={pressDown}
+                    onClick={() => handleContinueLearning(rec.id)}
+                    className="ios-frost group flex w-full items-center gap-3 rounded-[1.55rem] p-3 text-left"
+                  >
+                    <div className="relative h-16 w-16 overflow-hidden rounded-[1.15rem]">
+                      <img
+                        src={rec.thumbnail || '/placeholder.svg'}
+                        alt={rec.title}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Improve {rec.skillCategory}
+                        </span>
+                      </div>
+                      <h4 className="mt-1 truncate text-base font-semibold tracking-[-0.03em] text-foreground">{rec.title}</h4>
+                      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {rec.totalDuration}
+                        </span>
+                        <span className="font-semibold text-primary">+{rec.xpReward} XP</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:translate-x-0.5" />
+                  </motion.button>
+                )) : (
+                  <div className="ios-frost rounded-[1.55rem] p-4">
+                    <p className="text-sm font-medium text-muted-foreground">No recommendations right now. You&apos;re in a great place to explore new courses.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="ios-frost rounded-[1.8rem] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Recent badges</p>
+                    <p className="mt-1 text-base font-bold tracking-[-0.03em] text-foreground">Unlocked momentum</p>
+                  </div>
+                  <motion.button
+                    whileHover={subtleHover}
+                    whileTap={pressDown}
+                    onClick={() => handleTabChange('profile')}
+                    className="text-sm font-medium text-primary"
+                  >
+                    View all
+                  </motion.button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
+                  {unlockedBadges.slice(0, 4).map((badge, index) => (
+                    <motion.div
+                      key={badge.id}
+                      initial={getRevealProps(0.4 + (index * 0.03)).initial}
+                      animate={getRevealProps(0.4 + (index * 0.03)).animate}
+                      transition={getRevealProps(0.4 + (index * 0.03)).transition}
+                      whileHover={subtleHover}
+                      className="rounded-[1.35rem] border border-white/60 bg-white/55 px-3 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.86)] dark:border-white/10 dark:bg-white/8"
+                    >
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[1rem] bg-gradient-to-br from-primary/18 via-white/70 to-accent/20 text-2xl shadow-[0_14px_24px_-18px_rgba(59,130,246,0.35)] dark:from-primary/24 dark:via-white/8 dark:to-accent/18">
+                        {badge.icon}
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-[11px] font-semibold leading-4 text-muted-foreground">
+                        {badge.name}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.section>
+
+          <div className="hidden">
           {/* Continue Learning */}
           <section>
             <div className="flex items-center justify-between mb-3">
@@ -1329,6 +1831,7 @@ export default function LMSPage() {
               ))}
             </div>
           </section>
+          </div>
         </div>
       )}
 

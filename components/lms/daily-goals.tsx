@@ -40,20 +40,25 @@ export function DailyGoals({ user }: DailyGoalsProps) {
   const todaysXP = goals.filter(g => g.completed).reduce((acc, g) => acc + g.xp, 0)
 
   return (
-    <div className="glass-card rounded-2xl p-5">
+    <div className="ios-shell rounded-[2rem] p-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <Target className="w-5 h-5 text-primary" />
+          <div className="ios-icon-button flex h-9 w-9 items-center justify-center rounded-full">
+            <Target className="h-4.5 w-4.5 text-primary" />
           </div>
-          <h3 className="font-bold text-lg">Daily Goals</h3>
+          <div>
+            <h3 className="text-[1.05rem] font-bold tracking-[-0.03em] text-slate-950 dark:text-white">Daily Goals</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Small wins that keep the streak alive.</p>
+          </div>
         </div>
-        <span className="text-sm text-muted-foreground">{completedCount}/{goals.length} complete</span>
+        <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-medium text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:bg-white/10 dark:text-slate-300">
+          {completedCount}/{goals.length}
+        </span>
       </div>
 
       {/* Goals List */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {goals.map((goal, index) => {
           const percentage = Math.min((goal.current / goal.target) * 100, 100)
           
@@ -61,47 +66,51 @@ export function DailyGoals({ user }: DailyGoalsProps) {
             <div
               key={index}
               className={cn(
-                'rounded-xl p-4 border transition-all',
+                'ios-frost rounded-[1.4rem] p-3.5 transition-all duration-300 hover:-translate-y-0.5',
                 goal.completed
-                  ? 'bg-primary/10 border-primary/30'
-                  : 'bg-card border-border'
+                  ? 'border-primary/30 bg-primary/10'
+                  : 'border-white/70 bg-white/45 dark:bg-white/[0.06]'
               )}
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
-                      'w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all',
+                      'flex h-7 w-7 items-center justify-center rounded-full border transition-all',
                       goal.completed
-                        ? 'bg-primary border-primary'
-                        : 'border-muted-foreground/30'
+                        ? 'bg-primary text-primary-foreground shadow-[0_12px_20px_-14px_rgba(37,99,235,0.55)] border-primary'
+                        : 'border-slate-300/70 bg-white/50 text-transparent dark:border-white/15 dark:bg-white/5'
                     )}
                   >
                     {goal.completed && <Check className="w-4 h-4 text-primary-foreground" />}
                   </div>
                   <span className={cn(
-                    'font-medium',
+                    'text-[13px] font-semibold text-slate-900 dark:text-slate-100',
                     goal.completed && 'text-foreground'
                   )}>{goal.label}</span>
                 </div>
                 <span className={cn(
-                  'font-semibold',
-                  goal.completed ? 'text-primary' : 'text-primary/70'
+                  'rounded-full px-2.5 py-1 text-xs font-semibold',
+                  goal.completed
+                    ? 'bg-primary/12 text-primary'
+                    : 'bg-white/60 text-primary/80 dark:bg-white/8'
                 )}>+{goal.xp} XP</span>
               </div>
               
               {/* Progress Bar */}
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-800/80">
                   <div
                     className={cn(
                       'h-full rounded-full transition-all duration-500',
-                      goal.completed ? 'bg-primary' : 'bg-primary/60'
+                      goal.completed
+                        ? 'bg-[linear-gradient(90deg,rgba(86,161,255,1)_0%,rgba(59,130,246,1)_48%,rgba(131,198,255,1)_100%)]'
+                        : 'bg-[linear-gradient(90deg,rgba(148,197,255,0.95)_0%,rgba(86,161,255,0.85)_100%)]'
                     )}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
-                <span className="text-sm text-muted-foreground min-w-[50px] text-right">
+                <span className="min-w-[62px] text-right text-xs font-medium text-slate-500 dark:text-slate-400">
                   {goal.current}/{goal.target}{(goal as any).unit ? ` ${(goal as any).unit}` : ''}
                 </span>
               </div>
@@ -111,9 +120,9 @@ export function DailyGoals({ user }: DailyGoalsProps) {
       </div>
 
       {/* Today's XP Summary */}
-      <div className="flex items-center justify-between mt-5 pt-4 border-t border-border">
-        <span className="text-muted-foreground">Today's XP earned</span>
-        <span className="text-lg font-bold text-primary">+{todaysXP} XP</span>
+      <div className="mt-4 flex items-center justify-between border-t border-white/45 pt-3.5 dark:border-white/10">
+        <span className="text-sm text-slate-500 dark:text-slate-400">Today’s XP earned</span>
+        <span className="text-lg font-semibold tracking-[-0.03em] text-primary">+{todaysXP} XP</span>
       </div>
     </div>
   )

@@ -162,17 +162,17 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
   if (compact) {
     return (
       <>
-        <div className="glass-card relative overflow-hidden rounded-2xl p-4">
-          <div className="absolute top-0 right-0 h-28 w-28 rounded-bl-full bg-gradient-to-bl from-violet-500/16 to-transparent" />
+        <div className="ios-shell relative overflow-hidden rounded-[2rem] p-5">
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px rounded-full bg-white/70 dark:bg-white/18" />
           <div className="relative flex items-start gap-4">
             <button
               type="button"
               onClick={() => openDetail()}
-              className="relative mt-1 flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full border border-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.82)_0%,rgba(241,245,249,0.82)_100%)] shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-transform hover:scale-[1.02] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(20,33,53,0.92)_0%,rgba(15,24,41,0.92)_100%)] dark:shadow-[0_14px_34px_rgba(2,6,23,0.4)]"
+              className="ios-frost relative mt-1 flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full transition-transform duration-300 hover:scale-[1.02]"
               aria-label="Open readiness details"
             >
               <svg className="h-full w-full -rotate-90">
-                <circle cx="48" cy="48" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-200 dark:text-slate-800" />
+                <circle cx="48" cy="48" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-200/90 dark:text-slate-700" />
                 <circle
                   cx="48"
                   cy="48"
@@ -185,15 +185,15 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
                 />
                 <defs>
                   <linearGradient id="readinessGradientCompact" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#8fb1dd" />
-                    <stop offset="100%" stopColor="#5f7fb3" />
+                    <stop offset="0%" stopColor="#8cc0ff" />
+                    <stop offset="100%" stopColor="#4f78f2" />
                   </linearGradient>
                 </defs>
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center leading-none">
-                  <span className="text-[2rem] font-black text-slate-950 dark:text-white">{readinessScore}</span>
-                  <span className="mt-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">readiness</span>
+                  <span className="text-[2rem] font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">{readinessScore}</span>
+                  <span className="mt-1 block text-[9px] font-medium tracking-[0.18em] text-slate-500 dark:text-slate-400">READINESS</span>
                 </div>
               </div>
             </button>
@@ -201,37 +201,40 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Focus areas</h4>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Sales readiness</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Your strongest lift points for this week.</p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => openDetail()}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+                  className="inline-flex items-center gap-1 rounded-full bg-white/60 px-3 py-1 text-xs font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-colors hover:text-primary/80 dark:bg-white/10"
                 >
                   View details
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {skillLabels.map((skill) => {
                   const value = radarData[skill.key]
                   const isWeak = weakAreas.includes(skill.key)
                   const trackClass = isWeak
-                    ? 'bg-rose-200/90 dark:bg-rose-950/40'
-                    : 'bg-slate-200/90 dark:bg-slate-900/70'
+                    ? 'bg-rose-200/90 dark:bg-rose-950/30'
+                    : 'bg-slate-200/90 dark:bg-slate-800/90'
                   const fillClass = isWeak
-                    ? 'bg-gradient-to-r from-rose-500 via-rose-400 to-rose-300 dark:from-rose-400/80 dark:via-rose-300/65 dark:to-rose-200/45'
-                    : 'bg-gradient-to-r from-sky-500 via-sky-400 to-indigo-400 dark:from-slate-200/85 dark:via-slate-300/65 dark:to-slate-500/45'
+                    ? 'bg-[linear-gradient(90deg,rgba(251,113,133,0.95)_0%,rgba(251,146,60,0.95)_100%)]'
+                    : 'bg-[linear-gradient(90deg,rgba(142,197,255,0.95)_0%,rgba(88,122,255,0.92)_100%)]'
                   return (
                     <button
                       key={skill.key}
                       type="button"
                       onClick={() => handleSkillClick(skill.key)}
                       className={cn(
-                        'w-full rounded-2xl px-4 py-3.5 text-left transition-colors',
+                        'ios-frost w-full rounded-[1.45rem] px-4 py-3.5 text-left transition-all duration-300 hover:-translate-y-0.5',
                         isWeak
-                          ? 'border border-rose-200/90 bg-rose-50/90 hover:bg-rose-100/95 dark:border-rose-900/30 dark:bg-rose-950/20 dark:hover:bg-rose-950/26'
-                          : 'border border-slate-200/90 bg-white/90 hover:bg-slate-50 dark:border-white/8 dark:bg-slate-900/55 dark:hover:bg-slate-900/70',
+                          ? 'border-rose-200/80 bg-rose-50/75 dark:border-rose-900/30 dark:bg-rose-950/16'
+                          : 'border-white/70 bg-white/45 dark:bg-white/[0.06]',
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -240,15 +243,17 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
                             <div className={cn('h-2.5 w-2.5 rounded-full', isWeak ? 'bg-rose-400' : 'bg-sky-400')} />
                             <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{skill.label}</span>
                           </div>
-                          <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                          <p className="mt-1 text-[11px] font-semibold tracking-[0.12em] text-slate-500 dark:text-slate-400">
                             {isWeak ? 'Focus area' : 'On track'}
                           </p>
                         </div>
-                        <span className="text-sm font-semibold text-slate-500 dark:text-slate-300">{value}%</span>
+                        <span className="rounded-full bg-white/65 px-2.5 py-1 text-xs font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-white/8 dark:text-slate-300">
+                          {value}%
+                        </span>
                       </div>
                       <div className={cn('mt-3 h-1.5 overflow-hidden rounded-full', trackClass)}>
                         <div
-                          className={cn('h-full rounded-full shadow-[0_0_18px_rgba(148,163,184,0.18)]', fillClass)}
+                          className={cn('h-full rounded-full shadow-[0_12px_24px_-16px_rgba(59,130,246,0.65)]', fillClass)}
                           style={{ width: `${value}%` }}
                         />
                       </div>
