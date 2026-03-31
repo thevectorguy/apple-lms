@@ -209,7 +209,7 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
                 <button
                   type="button"
                   onClick={() => openDetail()}
-                  className="inline-flex items-center gap-1 rounded-full bg-white/60 px-3 py-1 text-xs font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-colors hover:text-primary/80 dark:bg-white/10"
+                  className="inline-flex items-center gap-1 rounded-full bg-white/60 px-3 py-1 text-xs font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-colors hover:text-primary/80 dark:bg-slate-900/76 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                 >
                   View details
                   <ChevronRight className="h-4 w-4" />
@@ -234,7 +234,7 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
                         'ios-frost w-full rounded-[1.45rem] px-4 py-3.5 text-left transition-all duration-300 hover:-translate-y-0.5',
                         isWeak
                           ? 'border-rose-200/80 bg-rose-50/75 dark:border-rose-900/30 dark:bg-rose-950/16'
-                          : 'border-white/70 bg-white/45 dark:bg-white/[0.06]',
+                          : 'border-white/70 bg-white/45 dark:border-white/8 dark:bg-slate-950/52',
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -247,7 +247,7 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
                             {isWeak ? 'Focus area' : 'On track'}
                           </p>
                         </div>
-                        <span className="rounded-full bg-white/65 px-2.5 py-1 text-xs font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-white/8 dark:text-slate-300">
+                        <span className="rounded-full bg-white/65 px-2.5 py-1 text-xs font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-slate-900/72 dark:text-slate-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                           {value}%
                         </span>
                       </div>

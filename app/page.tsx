@@ -1258,7 +1258,7 @@ export default function LMSPage() {
                         {Math.min(user.streak, 7)}/7 days lit this week
                       </p>
                     </div>
-                    <div className="rounded-full bg-white/65 px-3 py-1 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-white/10 dark:text-white">
+                    <div className="rounded-full bg-white/65 px-3 py-1 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-slate-900/72 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                       +50 XP daily
                     </div>
                   </div>
@@ -1274,8 +1274,8 @@ export default function LMSPage() {
                           className={cn(
                             'rounded-[1.2rem] border px-2 py-2.5 text-center transition-colors',
                             isActive
-                              ? 'border-white/80 bg-white/80 text-foreground shadow-[0_14px_26px_-18px_rgba(59,130,246,0.45)] dark:border-white/12 dark:bg-white/12 dark:text-white'
-                              : 'border-white/50 bg-white/35 text-muted-foreground dark:border-white/8 dark:bg-white/5'
+                              ? 'border-white/80 bg-white/80 text-foreground shadow-[0_14px_26px_-18px_rgba(59,130,246,0.45)] dark:border-white/10 dark:bg-slate-900/76 dark:text-white dark:shadow-[0_16px_28px_-18px_rgba(56,189,248,0.34)]'
+                              : 'border-white/50 bg-white/35 text-muted-foreground dark:border-white/8 dark:bg-slate-950/55'
                           )}
                         >
                           <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">{day}</p>
@@ -1326,7 +1326,7 @@ export default function LMSPage() {
                             {progressEpisodes}/{inProgressCourse.episodes.length} episodes complete
                           </p>
                         </div>
-                        <div className="rounded-full bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-white/12">
+                        <div className="rounded-full bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-slate-900/76 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Progress</p>
                           <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
                             {Math.round(courseProgressPercent)}%
@@ -1348,7 +1348,7 @@ export default function LMSPage() {
                           <Clock className="h-4 w-4 shrink-0" />
                           <span className="truncate">{nextEpisode ? nextEpisode.title : 'Course ready to resume'}</span>
                         </div>
-                        <div className="flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-sm font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-white/12 dark:text-white">
+                        <div className="flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-sm font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-slate-900/82 dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                           <span>{nextEpisode ? `+${nextEpisode.xp} XP` : 'Resume now'}</span>
                           <ChevronRight className="h-4 w-4" />
                         </div>
@@ -1467,11 +1467,11 @@ export default function LMSPage() {
 
               <div className="relative grid gap-5">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/42 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground dark:border-white/10 dark:bg-white/8 dark:text-white">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/42 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground dark:border-white/10 dark:bg-slate-900/68 dark:text-white">
                     <Trophy className="h-3.5 w-3.5" style={{ color: currentLeagueTier.theme.highlight }} />
                     {currentLeagueTier.name} league
                   </div>
-                  <div className="rounded-full bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-white/12">
+                  <div className="rounded-full bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-slate-900/76 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next move</p>
                     <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
                       {nextLeagueTier ? `${nextLeagueTier.progress}% to ${nextLeagueTier.name}` : 'Top tier reached'}
@@ -1488,7 +1488,7 @@ export default function LMSPage() {
                   </p>
                 </div>
 
-                <div className="rounded-[1.6rem] border border-white/60 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-white/10 dark:bg-white/8">
+                <div className="rounded-[1.6rem] border border-white/60 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-white/10 dark:bg-slate-950/56 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Best next action</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground dark:text-white">
                     {getLeagueHomeFocus(primaryLeagueFocus)}

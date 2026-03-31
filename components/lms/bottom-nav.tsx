@@ -50,8 +50,8 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                   className={cn(
                     'flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300',
                     isActive
-                      ? 'bg-white/70 text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:bg-white/14 dark:text-white'
-                      : 'bg-transparent text-current group-hover:bg-white/40 dark:group-hover:bg-white/8',
+                      ? 'bg-white/70 text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:bg-slate-900/78 dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                      : 'bg-transparent text-current group-hover:bg-white/40 dark:group-hover:bg-slate-900/60',
                   )}
                 >
                   <tab.icon

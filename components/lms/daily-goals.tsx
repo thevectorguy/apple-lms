@@ -52,7 +52,7 @@ export function DailyGoals({ user }: DailyGoalsProps) {
             <p className="text-xs text-slate-500 dark:text-slate-400">Small wins that keep the streak alive.</p>
           </div>
         </div>
-        <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-medium text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:bg-white/10 dark:text-slate-300">
+        <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-medium text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:bg-slate-900/76 dark:text-slate-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
           {completedCount}/{goals.length}
         </span>
       </div>
@@ -68,8 +68,8 @@ export function DailyGoals({ user }: DailyGoalsProps) {
               className={cn(
                 'ios-frost rounded-[1.4rem] p-3.5 transition-all duration-300 hover:-translate-y-0.5',
                 goal.completed
-                  ? 'border-primary/30 bg-primary/10'
-                  : 'border-white/70 bg-white/45 dark:bg-white/[0.06]'
+                  ? 'border-primary/30 bg-primary/10 dark:border-primary/25 dark:bg-primary/[0.14]'
+                  : 'border-white/70 bg-white/45 dark:border-white/8 dark:bg-slate-950/52'
               )}
             >
               <div className="mb-2.5 flex items-center justify-between gap-3">
@@ -93,7 +93,7 @@ export function DailyGoals({ user }: DailyGoalsProps) {
                   'rounded-full px-2.5 py-1 text-xs font-semibold',
                   goal.completed
                     ? 'bg-primary/12 text-primary'
-                    : 'bg-white/60 text-primary/80 dark:bg-white/8'
+                    : 'bg-white/60 text-primary/80 dark:bg-slate-900/72 dark:text-slate-300'
                 )}>+{goal.xp} XP</span>
               </div>
               
