@@ -164,6 +164,9 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
       <>
         <div className="ios-shell relative overflow-hidden rounded-[2rem] p-5">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px rounded-full bg-white/70 dark:bg-white/18" />
+          <div className="pointer-events-none absolute -left-8 top-0 h-24 w-24 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/12" />
+          <div className="pointer-events-none absolute right-0 top-8 h-24 w-24 rounded-full bg-indigo-200/25 blur-3xl dark:bg-indigo-500/10" />
+          <div className="pointer-events-none absolute bottom-0 left-1/3 h-20 w-20 rounded-full bg-cyan-200/20 blur-3xl dark:bg-cyan-400/8" />
           <div className="relative flex items-start gap-4">
             <button
               type="button"

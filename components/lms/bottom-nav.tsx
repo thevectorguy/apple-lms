@@ -26,7 +26,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         initial={{ opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 26, delay: 0.28 }}
-        className="ios-shell rounded-[2rem] px-3 pt-3 pb-[calc(0.85rem+env(safe-area-inset-bottom))]"
+        className="ios-shell rounded-[2rem] px-3 pt-2 pb-[calc(0.65rem+env(safe-area-inset-bottom))]"
       >
         <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/65 dark:bg-white/20" />
         <div className="grid grid-cols-5 gap-1">
@@ -40,7 +40,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.96 }}
                 className={cn(
-                  'group flex flex-col items-center gap-1 rounded-[1.35rem] px-2 py-2.5 text-[11px] font-medium transition-all duration-300',
+                  'group flex flex-col items-center gap-1 rounded-[1.35rem] px-2 py-1.5 text-[11px] font-medium transition-all duration-300',
                   isActive
                     ? 'ios-frost text-foreground shadow-[0_16px_30px_-22px_rgba(15,23,42,0.3)] dark:text-white'
                     : 'text-muted-foreground hover:text-foreground'

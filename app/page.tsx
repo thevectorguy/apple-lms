@@ -1046,6 +1046,170 @@ export default function LMSPage() {
       glow: 'from-indigo-300/65 via-violet-200/35 to-transparent dark:from-indigo-300/22 dark:via-violet-400/10',
     },
   ] as const
+  type QuickStatLabel = typeof quickStats[number]['label']
+  const getQuickStatCardStyle = (label: QuickStatLabel) => {
+    switch (label) {
+      case 'Streak':
+        return {
+          borderColor: 'rgba(251,191,36,0.24)',
+          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(251,191,36,0.26), transparent 30%), linear-gradient(180deg, rgba(255,248,228,0.94) 0%, rgba(244,232,211,0.78) 100%)',
+        }
+      case 'Readiness':
+        return {
+          borderColor: 'rgba(96,165,250,0.24)',
+          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.32), transparent 30%), linear-gradient(180deg, rgba(235,248,255,0.94) 0%, rgba(214,231,249,0.8) 100%)',
+        }
+      case 'XP':
+      default:
+        return {
+          borderColor: 'rgba(167,139,250,0.24)',
+          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(196,181,253,0.3), transparent 30%), linear-gradient(180deg, rgba(245,243,255,0.94) 0%, rgba(228,228,248,0.8) 100%)',
+        }
+    }
+  }
+  const getQuickStatIconShellStyle = (label: QuickStatLabel) => {
+    switch (label) {
+      case 'Streak':
+        return {
+          borderColor: 'rgba(251,191,36,0.18)',
+          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,244,214,0.82) 100%)',
+        }
+      case 'Readiness':
+        return {
+          borderColor: 'rgba(96,165,250,0.18)',
+          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(224,244,255,0.82) 100%)',
+        }
+      case 'XP':
+      default:
+        return {
+          borderColor: 'rgba(167,139,250,0.18)',
+          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(239,235,255,0.84) 100%)',
+        }
+    }
+  }
+  const consistencyPillStyle = {
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(245,247,250,0.86) 100%)',
+    boxShadow: '0 16px 28px -20px rgba(15,23,42,0.6), inset 0 1px 0 rgba(255,255,255,0.92)',
+  }
+  const heroSurfaceStyle = {
+    borderColor: 'rgba(255,255,255,0.72)',
+    backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.34), transparent 28%), radial-gradient(circle at 86% 14%, rgba(253,224,71,0.24), transparent 26%), radial-gradient(circle at 74% 18%, rgba(255,255,255,0.9), transparent 18%), repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 20px), linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(247,244,235,0.82) 42%, rgba(232,239,251,0.8) 100%)',
+    boxShadow: '0 34px 60px -36px rgba(125,146,175,0.42), inset 0 1px 0 rgba(255,255,255,0.92)',
+  }
+  const heroLeagueChipStyle = {
+    borderColor: `${currentLeagueTier.theme.highlight}24`,
+    backgroundImage: `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 52%), linear-gradient(135deg, rgba(255,255,255,0.88) 0%, ${currentLeagueTier.theme.accentSoft} 100%)`,
+  }
+  const novaSurfaceStyle = {
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundImage: 'radial-gradient(circle at 16% 18%, rgba(168,85,247,0.22), transparent 28%), radial-gradient(circle at 86% 16%, rgba(34,211,238,0.18), transparent 26%), radial-gradient(circle at 50% 100%, rgba(236,72,153,0.14), transparent 34%), repeating-linear-gradient(135deg, rgba(255,255,255,0.028) 0 1px, transparent 1px 18px), linear-gradient(180deg, rgba(46,28,74,0.94) 0%, rgba(14,18,34,0.88) 100%)',
+    boxShadow: '0 34px 60px -36px rgba(15,23,42,0.72), inset 0 1px 0 rgba(255,255,255,0.06)',
+  }
+  const novaFrostStyle = {
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundImage: 'radial-gradient(circle at 100% 0%, rgba(167,139,250,0.16), transparent 52%), linear-gradient(180deg, rgba(63,40,94,0.82) 0%, rgba(18,23,40,0.72) 100%)',
+  }
+  const novaMetricStyle = {
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundImage: 'radial-gradient(circle at 100% 0%, rgba(34,211,238,0.14), transparent 42%), linear-gradient(180deg, rgba(52,36,78,0.8) 0%, rgba(18,23,40,0.72) 100%)',
+  }
+  const leagueSurfaceStyle = {
+    borderColor: `${currentLeagueTier.theme.highlight}1f`,
+    backgroundImage: `radial-gradient(circle at 18% 14%, ${currentLeagueTier.theme.highlight}24, transparent 26%), radial-gradient(circle at 84% 12%, ${currentLeagueTier.theme.accent}1f, transparent 24%), radial-gradient(circle at 64% 56%, rgba(255,255,255,0.04), transparent 34%), ${currentLeagueTier.theme.ambience}, ${currentLeagueTier.theme.texture}, ${currentLeagueTier.theme.haze}, linear-gradient(180deg, rgba(7,12,21,0.12) 0%, rgba(4,8,16,0.34) 100%)`,
+    boxShadow: `0 34px 64px -38px rgba(15,23,42,0.72), 0 0 0 1px ${currentLeagueTier.theme.highlight}12, inset 0 1px 0 rgba(255,255,255,0.06)`,
+  }
+  const leagueLandscapeStyle = {
+    backgroundImage: currentLeagueTier.theme.landscape,
+  }
+  const leagueChipStyle = {
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundImage: `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 54%), linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(148,163,184,0.12) 100%)`,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 32px -26px rgba(2,6,23,0.72)',
+  }
+  const leagueDetailStyle = {
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundImage: `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 42%), radial-gradient(circle at 0% 100%, ${currentLeagueTier.theme.accent}18, transparent 42%), ${currentLeagueTier.theme.panel}, linear-gradient(180deg, rgba(38,46,62,0.94) 0%, rgba(18,24,38,0.86) 100%)`,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 22px 42px -30px rgba(2,6,23,0.78)',
+  }
+  const leagueBadgeTileStyle = {
+    borderColor: 'rgba(255,255,255,0.06)',
+    backgroundImage: `radial-gradient(circle at 24% 22%, ${currentLeagueTier.theme.highlight}16, transparent 34%), linear-gradient(180deg, rgba(40,49,66,0.96) 0%, rgba(24,31,46,0.92) 100%)`,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 24px 34px -28px rgba(2,6,23,0.92)',
+  }
+  const leagueActionStyle = {
+    backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(241,245,249,0.94) 100%)',
+    boxShadow: '0 20px 30px -22px rgba(15,23,42,0.84), inset 0 1px 0 rgba(255,255,255,0.9)',
+  }
+  const headerSurfaceStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 12% 20%, rgba(56,189,248,0.12), transparent 28%), radial-gradient(circle at 84% 14%, rgba(148,163,184,0.12), transparent 24%), linear-gradient(180deg, rgba(22,29,44,0.18) 0%, rgba(7,11,20,0.04) 100%), var(--glass-bg)'
+      : 'radial-gradient(circle at 12% 20%, rgba(125,211,252,0.2), transparent 26%), radial-gradient(circle at 84% 14%, rgba(196,181,253,0.16), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(236,244,255,0.58) 100%), var(--glass-bg)',
+  }
+  const continueSurfaceStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 14% 84%, rgba(34,211,238,0.14), transparent 26%), radial-gradient(circle at 82% 12%, rgba(59,130,246,0.12), transparent 22%), linear-gradient(180deg, rgba(15,24,39,0.24) 0%, rgba(6,10,18,0.08) 100%), var(--glass-bg)'
+      : 'radial-gradient(circle at 14% 84%, rgba(103,232,249,0.2), transparent 28%), radial-gradient(circle at 82% 12%, rgba(96,165,250,0.18), transparent 24%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(232,244,255,0.56) 100%), var(--glass-bg)',
+  }
+  const recommendationsSurfaceStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 10% 16%, rgba(251,191,36,0.12), transparent 24%), radial-gradient(circle at 84% 16%, rgba(244,114,182,0.1), transparent 22%), radial-gradient(circle at 50% 100%, rgba(59,130,246,0.08), transparent 32%), linear-gradient(180deg, rgba(20,20,30,0.2) 0%, rgba(7,10,18,0.06) 100%), var(--glass-bg)'
+      : 'radial-gradient(circle at 10% 16%, rgba(251,191,36,0.22), transparent 24%), radial-gradient(circle at 84% 16%, rgba(244,114,182,0.14), transparent 22%), radial-gradient(circle at 50% 100%, rgba(96,165,250,0.12), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(255,246,228,0.58) 100%), var(--glass-bg)',
+  }
+  const recommendationCardStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 100% 0%, rgba(96,165,250,0.1), transparent 42%), linear-gradient(180deg, rgba(29,36,54,0.82) 0%, rgba(12,18,32,0.68) 100%)'
+      : 'radial-gradient(circle at 100% 0%, rgba(96,165,250,0.12), transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(240,245,255,0.56) 100%)',
+  }
+  const badgesSurfaceStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 12% 18%, rgba(251,191,36,0.1), transparent 24%), radial-gradient(circle at 88% 12%, rgba(99,102,241,0.1), transparent 24%), linear-gradient(180deg, rgba(36,31,33,0.66) 0%, rgba(17,18,28,0.72) 100%)'
+      : 'radial-gradient(circle at 12% 18%, rgba(251,191,36,0.16), transparent 24%), radial-gradient(circle at 88% 12%, rgba(99,102,241,0.14), transparent 24%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(244,245,255,0.58) 100%)',
+  }
+  const consistencySurfaceStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 10% 16%, rgba(251,191,36,0.12), transparent 24%), radial-gradient(circle at 86% 18%, rgba(59,130,246,0.1), transparent 22%), linear-gradient(180deg, rgba(24,29,42,0.84) 0%, rgba(12,16,27,0.72) 100%)'
+      : 'radial-gradient(circle at 10% 16%, rgba(251,191,36,0.2), transparent 24%), radial-gradient(circle at 86% 18%, rgba(96,165,250,0.16), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,247,229,0.56) 100%)',
+  }
+  const badgeTileStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 100% 0%, rgba(251,191,36,0.12), transparent 44%), linear-gradient(180deg, rgba(38,34,42,0.86) 0%, rgba(20,20,30,0.72) 100%)'
+      : 'radial-gradient(circle at 100% 0%, rgba(251,191,36,0.14), transparent 44%), linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(247,244,255,0.58) 100%)',
+  }
+  const getRecommendationToneStyle = (skillCategory: SkillCategory) => {
+    switch (skillCategory) {
+      case 'communication':
+        return {
+          borderColor: isDark ? 'rgba(244,114,182,0.18)' : 'rgba(244,114,182,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 0% 0%, rgba(244,114,182,0.16), transparent 34%), linear-gradient(180deg, rgba(52,28,46,0.82) 0%, rgba(24,18,32,0.72) 100%)'
+            : 'radial-gradient(circle at 0% 0%, rgba(244,114,182,0.18), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,240,247,0.6) 100%)',
+        }
+      case 'technical':
+        return {
+          borderColor: isDark ? 'rgba(96,165,250,0.18)' : 'rgba(96,165,250,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 0% 0%, rgba(96,165,250,0.16), transparent 34%), linear-gradient(180deg, rgba(24,36,54,0.82) 0%, rgba(14,20,34,0.72) 100%)'
+            : 'radial-gradient(circle at 0% 0%, rgba(96,165,250,0.18), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(236,245,255,0.62) 100%)',
+        }
+      case 'leadership':
+        return {
+          borderColor: isDark ? 'rgba(251,191,36,0.18)' : 'rgba(251,191,36,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 0% 0%, rgba(251,191,36,0.16), transparent 34%), linear-gradient(180deg, rgba(54,39,20,0.82) 0%, rgba(30,20,14,0.72) 100%)'
+            : 'radial-gradient(circle at 0% 0%, rgba(251,191,36,0.18), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,247,231,0.62) 100%)',
+        }
+      case 'compliance':
+        return {
+          borderColor: isDark ? 'rgba(52,211,153,0.18)' : 'rgba(52,211,153,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 0% 0%, rgba(52,211,153,0.16), transparent 34%), linear-gradient(180deg, rgba(20,47,44,0.82) 0%, rgba(14,28,24,0.72) 100%)'
+            : 'radial-gradient(circle at 0% 0%, rgba(52,211,153,0.18), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(235,251,247,0.62) 100%)',
+        }
+      default:
+        return recommendationCardStyle
+    }
+  }
 
   const getRevealProps = (delay = 0) => {
     if (prefersReducedMotion) {
@@ -1092,6 +1256,7 @@ export default function LMSPage() {
         <motion.div
           {...getRevealProps(0.03)}
           className="ios-shell relative overflow-hidden rounded-[2rem] px-4 py-3"
+          style={headerSurfaceStyle}
         >
           <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/75 dark:bg-white/20" />
           <div className="absolute -left-10 top-0 h-20 w-24 rounded-full bg-sky-200/50 blur-3xl dark:bg-sky-400/10" />
@@ -1176,11 +1341,12 @@ export default function LMSPage() {
           <motion.section
             {...getRevealProps(0.08)}
             className="ios-shell relative overflow-hidden rounded-[2.35rem] p-5 sm:p-6"
+            style={heroSurfaceStyle}
           >
             <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/75 dark:bg-white/18" />
-            <div className="absolute -left-16 top-0 h-36 w-36 rounded-full bg-sky-200/55 blur-3xl dark:bg-sky-500/10" />
-            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/90 blur-3xl dark:bg-indigo-400/12" />
-            <div className="absolute bottom-0 left-1/3 h-28 w-28 rounded-full bg-cyan-200/35 blur-3xl dark:bg-cyan-400/8" />
+            <div className="absolute -left-16 top-0 h-36 w-36 rounded-full blur-3xl" style={{ background: isDark ? 'rgba(56,189,248,0.18)' : 'rgba(125,211,252,0.52)' }} />
+            <div className="absolute right-0 top-0 h-40 w-40 rounded-full blur-3xl" style={{ background: isDark ? 'rgba(192,132,252,0.18)' : 'rgba(253,230,138,0.4)' }} />
+            <div className="absolute bottom-0 left-1/3 h-28 w-28 rounded-full blur-3xl" style={{ background: isDark ? 'rgba(251,146,60,0.12)' : 'rgba(196,181,253,0.3)' }} />
 
             <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)] xl:items-start">
               <div className="space-y-5">
@@ -1196,6 +1362,7 @@ export default function LMSPage() {
                         animate={prefersReducedMotion ? { rotate: 0, scale: 1 } : { rotate: [0, 16, -10, 10, 0], scale: [1, 1.06, 1, 1.04, 1] }}
                         transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.85, delay: 0.18 }}
                         className="ios-frost flex h-9 w-9 items-center justify-center rounded-full text-[0px]"
+                        style={novaFrostStyle}
                       >
                         👋
                         <Sparkles className="h-4.5 w-4.5 text-primary" />
@@ -1210,10 +1377,7 @@ export default function LMSPage() {
                     whileTap={pressDown}
                     onClick={() => handleTabChange('leagues')}
                     className="ios-frost flex items-center gap-2 rounded-full px-3 py-2 text-left"
-                    style={{
-                      borderColor: currentLeagueTier.theme.accentSoft,
-                      background: `${currentLeagueTier.theme.accent}16`,
-                    }}
+                    style={heroLeagueChipStyle}
                   >
                     <Trophy className="h-4 w-4" style={{ color: currentLeagueTier.theme.highlight }} />
                     <div className="leading-none">
@@ -1232,6 +1396,7 @@ export default function LMSPage() {
                       transition={getRevealProps(0.12 + (index * 0.05)).transition}
                       whileHover={hoverLift}
                       className="ios-frost relative overflow-hidden rounded-[1.45rem] px-3 py-3.5"
+                      style={getQuickStatCardStyle(label)}
                     >
                       <div className={cn('absolute inset-0 bg-gradient-to-br opacity-80', glow)} />
                       <div className="relative flex items-start justify-between gap-2">
@@ -1242,7 +1407,7 @@ export default function LMSPage() {
                           </p>
                           <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground max-sm:hidden">{helper}</p>
                         </div>
-                        <div className="ios-icon-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9">
+                        <div className="ios-icon-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9" style={getQuickStatIconShellStyle(label)}>
                           <Icon className={cn('h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]', tint)} />
                         </div>
                       </div>
@@ -1250,7 +1415,7 @@ export default function LMSPage() {
                   ))}
                 </div>
 
-                <div className="ios-frost rounded-[1.7rem] p-3">
+                <div className="ios-frost rounded-[1.7rem] p-3" style={consistencySurfaceStyle}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Consistency</p>
@@ -1258,7 +1423,7 @@ export default function LMSPage() {
                         {Math.min(user.streak, 7)}/7 days lit this week
                       </p>
                     </div>
-                    <div className="rounded-full bg-white/65 px-3 py-1 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-slate-900/72 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                    <div className="rounded-full border px-3 py-1 text-xs font-semibold text-foreground" style={consistencyPillStyle}>
                       +50 XP daily
                     </div>
                   </div>
@@ -1293,6 +1458,7 @@ export default function LMSPage() {
                   whileTap={pressDown}
                   onClick={() => handleContinueLearning(inProgressCourse.id)}
                   className="ios-frost group relative overflow-hidden rounded-[2rem] p-4 text-left"
+                  style={continueSurfaceStyle}
                 >
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.75),transparent_34%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent_34%)]" />
                   <div className="relative">
@@ -1386,25 +1552,27 @@ export default function LMSPage() {
               whileTap={pressDown}
               onClick={openAIPracticeCoach}
               className="ios-shell relative overflow-hidden rounded-[2.15rem] p-4 text-left"
+              style={novaSurfaceStyle}
             >
-              <div className="absolute -right-8 top-0 h-32 w-32 rounded-full bg-violet-200/50 blur-3xl dark:bg-violet-500/14" />
-              <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-sky-200/45 blur-3xl dark:bg-sky-500/10" />
+              <div className="absolute -right-8 top-0 h-32 w-32 rounded-full blur-3xl" style={{ background: isDark ? 'rgba(168,85,247,0.2)' : 'rgba(196,181,253,0.56)' }} />
+              <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full blur-3xl" style={{ background: isDark ? 'rgba(34,211,238,0.14)' : 'rgba(125,211,252,0.48)' }} />
+              <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl" style={{ background: isDark ? 'rgba(236,72,153,0.1)' : 'rgba(244,114,182,0.14)' }} />
 
               <div className="relative">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="ios-frost flex h-12 w-12 items-center justify-center rounded-[1.3rem]">
+                  <div className="ios-frost flex h-12 w-12 items-center justify-center rounded-[1.3rem]" style={novaFrostStyle}>
                     <Brain className="h-6 w-6 text-violet-500" />
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="ios-frost flex h-11 w-11 items-center justify-center rounded-full">
+                    <div className="ios-frost flex h-11 w-11 items-center justify-center rounded-full" style={novaFrostStyle}>
                       <div className="flex items-end gap-0.5">
                         <span className="h-2.5 w-1 rounded-full bg-violet-500/65" />
                         <span className="h-4 w-1 rounded-full bg-fuchsia-500/75" />
                         <span className="h-3 w-1 rounded-full bg-sky-500/70" />
                       </div>
                     </div>
-                    <div className="ios-frost rounded-full px-3 py-2 text-right">
+                    <div className="ios-frost rounded-full px-3 py-2 text-right" style={novaFrostStyle}>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current focus</p>
                       <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
                         {skillProfile.weakAreas[0] ? skillProfile.weakAreas[0].charAt(0).toUpperCase() + skillProfile.weakAreas[0].slice(1) : 'All skills'}
@@ -1421,17 +1589,17 @@ export default function LMSPage() {
                 </p>
 
                 <div className="mt-4 grid grid-cols-3 gap-2.5">
-                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5">
+                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5" style={novaMetricStyle}>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Readiness</p>
                     <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">{skillProfile.readinessScore}%</p>
                   </div>
-                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5">
+                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5" style={novaMetricStyle}>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gap</p>
                     <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">
                       {skillProfile.weakAreas[0] ? `${skillProfile.skillGapByCategory[skillProfile.weakAreas[0]]}%` : '0%'}
                     </p>
                   </div>
-                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5">
+                  <div className="ios-frost rounded-[1.25rem] px-3 py-2.5" style={novaMetricStyle}>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Signals</p>
                     <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">{skillProfile.competencyHistory.length}</p>
                   </div>
@@ -1439,7 +1607,7 @@ export default function LMSPage() {
 
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-muted-foreground">+50 XP each focused session</p>
-                  <div className="flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_34px_-20px_rgba(15,23,42,0.9)] dark:bg-white dark:text-slate-950">
+                  <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_34px_-20px_rgba(124,58,237,0.5)]">
                     Start session
                     <ChevronRight className="h-4 w-4" />
                   </div>
@@ -1455,47 +1623,61 @@ export default function LMSPage() {
               whileTap={pressDown}
               onClick={() => handleTabChange('leagues')}
               className="ios-shell relative overflow-hidden rounded-[2.15rem] p-5 text-left"
-              style={{
-                backgroundImage: isDark
-                  ? `linear-gradient(180deg,rgba(10,16,27,0.18)_0%,rgba(10,16,27,0.08)_100%), ${currentLeagueTier.theme.ambience}, var(--glass-bg)`
-                  : `linear-gradient(180deg,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.46)_100%), ${currentLeagueTier.theme.ambience}, var(--glass-bg)`,
-              }}
+              style={leagueSurfaceStyle}
             >
-              <div className="absolute inset-x-0 bottom-0 h-28 opacity-60" style={{ backgroundImage: currentLeagueTier.theme.landscape }} />
-              <div className="absolute -left-10 top-8 h-40 w-40 rounded-full blur-3xl" style={{ background: `${currentLeagueTier.theme.accentSoft}B0` }} />
-              <div className="absolute right-0 top-10 h-36 w-36 rounded-full blur-3xl" style={{ background: `${currentLeagueTier.theme.highlight}22` }} />
+              <div className="absolute inset-x-0 bottom-0 h-28 opacity-70" style={leagueLandscapeStyle} />
+              <div className="absolute -left-12 top-6 h-40 w-40 rounded-full blur-3xl" style={{ background: `${currentLeagueTier.theme.accent}20` }} />
+              <div className="absolute right-0 top-8 h-36 w-36 rounded-full blur-3xl" style={{ background: `${currentLeagueTier.theme.highlight}2b` }} />
+              <div className="absolute left-[46%] top-[55%] h-4 w-4 rounded-full border border-white/10" />
+              <div className="absolute right-14 top-[70%] h-3.5 w-3.5 rounded-full border border-white/10" />
 
               <div className="relative grid gap-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/42 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground dark:border-white/10 dark:bg-slate-900/68 dark:text-white">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/88" style={leagueChipStyle}>
                     <Trophy className="h-3.5 w-3.5" style={{ color: currentLeagueTier.theme.highlight }} />
-                    {currentLeagueTier.name} league
+                    {currentLeagueTier.name}
                   </div>
-                  <div className="rounded-full bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-slate-900/76 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next move</p>
-                    <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
-                      {nextLeagueTier ? `${nextLeagueTier.progress}% to ${nextLeagueTier.name}` : 'Top tier reached'}
-                    </p>
+                  <div className="flex h-24 w-24 items-center justify-center rounded-[1.8rem] border" style={leagueBadgeTileStyle}>
+                    <Trophy className="h-9 w-9" style={{ color: currentLeagueTier.theme.text }} />
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-[1.78rem] font-bold tracking-[-0.055em] text-foreground dark:text-white">
-                    Keep climbing in flow.
+                <div className="max-w-[18.5rem]">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/42">
+                    {currentLeagueTier.headline}
+                  </p>
+                  <h3 className="mt-3 text-[2.85rem] font-black uppercase leading-[0.88] tracking-[-0.08em] text-white">
+                    {currentLeagueTier.name}
+                    <br />
+                    League
                   </h3>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-foreground/72 dark:text-white/72">
+                  <p className="mt-4 text-[0.98rem] leading-8 text-white/72">
                     {getLeagueHomeCopy(currentLeagueTier, nextLeagueTier)}
                   </p>
                 </div>
 
-                <div className="rounded-[1.6rem] border border-white/60 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-white/10 dark:bg-slate-950/56 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Best next action</p>
-                  <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground dark:text-white">
-                    {getLeagueHomeFocus(primaryLeagueFocus)}
-                  </p>
-                  <div className="mt-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{nextLeagueTier ? `${nextLeagueTier.name} is within reach this week.` : 'You are already sitting at the top.'}</span>
+                <div className="relative overflow-hidden rounded-[1.6rem] border p-4 backdrop-blur-xl" style={leagueDetailStyle}>
+                  <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
+                  <div className="absolute -right-10 top-0 h-24 w-24 rounded-full blur-3xl" style={{ background: `${currentLeagueTier.theme.highlight}18` }} />
+
+                  <div className="relative flex items-end justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/42">
+                        {nextLeagueTier ? `On the way to ${nextLeagueTier.name}` : 'Top tier status'}
+                      </p>
+                      <p className="mt-2 text-[1.6rem] font-black tracking-[-0.06em] text-white">
+                        {nextLeagueTier ? `${nextLeagueTier.progress}% to ${nextLeagueTier.name}` : 'Top tier reached'}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2 text-sm font-medium text-white/62">
+                        <Users className="h-4 w-4" style={{ color: currentLeagueTier.theme.highlight }} />
+                        <span>{nextLeagueTier ? getLeagueHomeFocus(primaryLeagueFocus) : 'Every milestone is already secured.'}</span>
+                      </div>
+                    </div>
+
+                    <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-3 text-sm font-semibold text-slate-950" style={leagueActionStyle}>
+                      See ladder
+                      <ChevronRight className="h-4 w-4" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1527,6 +1709,7 @@ export default function LMSPage() {
             {...getRevealProps(0.32)}
             whileHover={hoverLift}
             className="ios-shell relative overflow-hidden rounded-[2.15rem] p-5"
+            style={recommendationsSurfaceStyle}
           >
             <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-amber-200/40 blur-3xl dark:bg-amber-500/10" />
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1560,6 +1743,7 @@ export default function LMSPage() {
                     whileTap={pressDown}
                     onClick={() => handleContinueLearning(rec.id)}
                     className="ios-frost group flex w-full items-center gap-3 rounded-[1.55rem] p-3 text-left"
+                    style={recommendationCardStyle}
                   >
                     <div className="relative h-16 w-16 overflow-hidden rounded-[1.15rem]">
                       <img
@@ -1593,7 +1777,7 @@ export default function LMSPage() {
                 )}
               </div>
 
-              <div className="ios-frost rounded-[1.8rem] p-4">
+              <div className="ios-frost rounded-[1.8rem] p-4" style={badgesSurfaceStyle}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Recent badges</p>
