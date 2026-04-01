@@ -26,7 +26,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         initial={{ opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 26, delay: 0.28 }}
-        className="ios-shell rounded-[2rem] px-3 pt-2 pb-[calc(0.65rem+env(safe-area-inset-bottom))]"
+        className="ios-shell rounded-[2rem] px-3 pt-1 pb-[calc(0.3rem+env(safe-area-inset-bottom))]"
       >
         <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/65 dark:bg-white/20" />
         <div className="grid grid-cols-5 gap-1">
@@ -40,7 +40,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.96 }}
                 className={cn(
-                  'group flex flex-col items-center gap-1 rounded-[1.35rem] px-2 py-1.5 text-[11px] font-medium transition-all duration-300',
+                  'group flex flex-col items-center gap-[2px] rounded-[1.25rem] px-2 py-[3px] text-[10px] font-medium leading-none transition-all duration-300',
                   isActive
                     ? 'ios-frost text-foreground shadow-[0_16px_30px_-22px_rgba(15,23,42,0.3)] dark:text-white'
                     : 'text-muted-foreground hover:text-foreground'
@@ -48,7 +48,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               >
                 <div
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300',
+                    'flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300',
                     isActive
                       ? 'bg-white/70 text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:bg-slate-900/78 dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
                       : 'bg-transparent text-current group-hover:bg-white/40 dark:group-hover:bg-slate-900/60',
@@ -56,13 +56,13 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 >
                   <tab.icon
                     className={cn(
-                      'h-[1.15rem] w-[1.15rem] transition-transform duration-300',
+                      'h-[1.18rem] w-[1.18rem] transition-transform duration-300',
                       isActive && 'scale-105'
                     )}
                     strokeWidth={2.15}
                   />
                 </div>
-                <span className={cn('transition-colors duration-300', isActive ? 'text-foreground dark:text-white' : 'text-muted-foreground')}>
+                <span className={cn('leading-none transition-colors duration-300', isActive ? 'text-foreground dark:text-white' : 'text-muted-foreground')}>
                   {tab.label}
                 </span>
               </motion.button>

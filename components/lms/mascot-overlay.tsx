@@ -88,6 +88,12 @@ const introStepVariants = {
   }),
 }
 
+// Keep the mascot experience in the codebase for later, but hide the visual
+// mascot and welcome flow until the production mascot is ready.
+const SHOW_MASCOT_VISUALS = false
+const SHOW_MASCOT_WELCOME_FLOW = false
+const SHOW_MASCOT_AUTO_NUDGES = false
+
 function formatSkill(skill?: SkillCategory) {
   if (!skill) return null
   return skill.charAt(0).toUpperCase() + skill.slice(1)
@@ -125,6 +131,24 @@ function buildManualTrigger(userName: string, skillProfile: UserSkillProfile): M
 function buildIntroMessages(userName: string, event: MascotTriggerEvent | null, skillProfile: UserSkillProfile) {
   const focusSkill = formatSkill(event?.skill ?? skillProfile.weakAreas[0]) ?? 'your next focus area'
   const title = event?.itemTitle ?? event?.courseTitle ?? 'this run'
+
+  if (!SHOW_MASCOT_VISUALS) {
+    return [
+      {
+        id: 'intro-system',
+        role: 'system' as const,
+        content: 'Nova chat is ready.',
+        contextTrigger: event?.trigger ?? 'intro',
+      },
+      {
+        id: 'intro-mascot',
+        role: 'mascot' as const,
+        content: `I am Nova. I am tracking ${title} and your ${focusSkill.toLowerCase()} progress, ${userName}. Ask me what to do next and I will keep it useful.`,
+        emotion: 'waving' as const,
+        contextTrigger: event?.trigger ?? 'intro',
+      },
+    ]
+  }
 
   return [
     {
@@ -815,14 +839,14 @@ export function MascotOverlay({
     setAnimationKey(prev => prev + 1)
 
     if (event.openChat) {
-    if (queuedChatOpenRef.current) {
-      window.clearTimeout(queuedChatOpenRef.current)
-      queuedChatOpenRef.current = null
-    }
-    stopSheetDismissAnimation()
-    setIsNudgeVisible(false)
-    setIsIntroOpen(false)
-    openChatSheet()
+      if (queuedChatOpenRef.current) {
+        window.clearTimeout(queuedChatOpenRef.current)
+        queuedChatOpenRef.current = null
+      }
+      stopSheetDismissAnimation()
+      setIsNudgeVisible(false)
+      setIsIntroOpen(false)
+      openChatSheet()
       setMessages(prev => {
         const seeded = prev.length ? prev : buildIntroMessages(userName, event, skillProfile)
         return [
@@ -838,9 +862,15 @@ export function MascotOverlay({
       return
     }
 
-    if (!introSeen && event.trigger === 'intro') {
+    if (SHOW_MASCOT_WELCOME_FLOW && !introSeen && event.trigger === 'intro') {
       resetIntroFlow()
       setIsIntroOpen(true)
+      setIsNudgeVisible(false)
+      return
+    }
+
+    if (!SHOW_MASCOT_AUTO_NUDGES) {
+      setIsIntroOpen(false)
       setIsNudgeVisible(false)
       return
     }
@@ -864,6 +894,7 @@ export function MascotOverlay({
     [activeEvent, skillProfile],
   )
   const isConversationExpanded = pendingReply || messages.some(message => message.role === 'user')
+  const shouldHideSummonControlsInFeed = activeTab === 'courses'
 
   const openIntro = () => {
     if (queuedChatOpenRef.current) {
@@ -888,11 +919,11 @@ export function MascotOverlay({
       queuedChatOpenRef.current = null
     }
     stopSheetDismissAnimation()
-    if (!introSeen && !options.skipIntro) {
+    if (SHOW_MASCOT_WELCOME_FLOW && !introSeen && !options.skipIntro) {
       openIntro()
       return
     }
-    if (options.skipIntro) {
+    if (SHOW_MASCOT_WELCOME_FLOW && options.skipIntro) {
       markIntroSeen()
     }
     setIsIntroOpen(false)
@@ -905,7 +936,7 @@ export function MascotOverlay({
   }
 
   const startSummonSequence = () => {
-    if (!introSeen) {
+    if (SHOW_MASCOT_WELCOME_FLOW && !introSeen) {
       openIntro()
       return
     }
@@ -915,6 +946,12 @@ export function MascotOverlay({
       window.clearTimeout(queuedChatOpenRef.current)
     }
     setActiveEvent(manualEvent)
+
+    if (!SHOW_MASCOT_VISUALS || !SHOW_MASCOT_AUTO_NUDGES) {
+      openChat(manualEvent, { skipIntro: true })
+      return
+    }
+
     setNudgeMode('manual')
     setEmotion('waving')
     setAnimationKey(prev => prev + 1)
@@ -1045,26 +1082,31 @@ export function MascotOverlay({
 
   return (
     <>
-      <div
-        aria-hidden
-        className="fixed inset-y-0 right-0 z-[108] w-5 touch-pan-y"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-      />
+      {!shouldHideSummonControlsInFeed && (
+        <>
+          <div
+            aria-hidden
+            className="fixed inset-y-0 right-0 z-[108] w-5 touch-pan-y"
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+          />
 
-      <div className="pointer-events-none fixed bottom-24 right-4 z-[109] sm:bottom-7 sm:right-6">
-        <Button
-          type="button"
-          onClick={handleSummon}
-          className="pointer-events-auto rounded-full border border-white/40 bg-white/82 px-4 py-6 text-slate-900 shadow-[0_24px_60px_rgba(15,23,42,0.2)] backdrop-blur-2xl hover:bg-white dark:border-white/10 dark:bg-slate-900/80 dark:text-white dark:shadow-[0_24px_60px_rgba(0,0,0,0.36)]"
-        >
-          <Sparkles className="mr-2 h-4 w-4" />
-          Call Nova
-        </Button>
-      </div>
+          <div className="pointer-events-none fixed bottom-24 right-4 z-[109] sm:bottom-7 sm:right-6">
+            <Button
+              type="button"
+              onClick={handleSummon}
+              className="pointer-events-auto rounded-full border border-white/40 bg-white/82 px-4 py-6 text-slate-900 shadow-[0_24px_60px_rgba(15,23,42,0.2)] backdrop-blur-2xl hover:bg-white dark:border-white/10 dark:bg-slate-900/80 dark:text-white dark:shadow-[0_24px_60px_rgba(0,0,0,0.36)]"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Call Nova
+            </Button>
+          </div>
+        </>
+      )}
 
       <AnimatePresence>
-        {isNudgeVisible && activeEvent && !isChatOpen && !isIntroOpen && (
+        {/* Keep the mascot entrance in the file, but hide it until the production mascot is ready. */}
+        {SHOW_MASCOT_AUTO_NUDGES && isNudgeVisible && activeEvent && !isChatOpen && !isIntroOpen && (
           <motion.button
             type="button"
             onClick={() => openChat()}
@@ -1114,7 +1156,8 @@ export function MascotOverlay({
       </AnimatePresence>
 
       <AnimatePresence>
-        {isIntroOpen && activeEvent && (
+        {/* Keep the welcome cards in the file so they can be restored later. */}
+        {SHOW_MASCOT_WELCOME_FLOW && isIntroOpen && activeEvent && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1326,29 +1369,37 @@ export function MascotOverlay({
                 <span className="h-1.5 w-10 rounded-full bg-slate-400/40 shadow-[0_0_14px_rgba(148,163,184,0.2)] dark:bg-white/28 dark:shadow-[0_0_14px_rgba(255,255,255,0.12)]" />
               </div>
 
-              <div className={cn('grid h-full grid-cols-1 sm:grid-cols-[34%_66%] lg:grid-cols-[38%_62%]', isConversationExpanded ? 'pt-1 sm:pt-5' : 'pt-2 sm:pt-8')}>
-                <div className="relative hidden min-h-0 overflow-hidden bg-[radial-gradient(circle_at_32%_18%,rgba(103,232,249,0.34),transparent_24%),radial-gradient(circle_at_80%_16%,rgba(125,211,252,0.28),transparent_18%),linear-gradient(180deg,rgba(236,254,255,0.94)_0%,rgba(224,242,254,0.88)_46%,rgba(248,250,252,0.98)_100%)] sm:block dark:bg-[radial-gradient(circle_at_32%_18%,rgba(91,231,216,0.22),transparent_24%),radial-gradient(circle_at_80%_16%,rgba(96,121,234,0.22),transparent_18%),linear-gradient(180deg,rgba(18,28,59,0.58)_0%,rgba(9,14,30,0.82)_58%,rgba(3,7,18,0.96)_100%)]">
-                  <div className="pointer-events-none absolute -left-10 bottom-16 h-40 w-40 rounded-full bg-cyan-300/24 blur-3xl dark:bg-cyan-300/18" />
-                  <div className="pointer-events-none absolute right-0 top-12 h-28 w-28 rounded-full bg-sky-300/22 blur-3xl dark:bg-indigo-300/16" />
-                  <div className="pointer-events-none absolute left-5 top-6 z-10">
-                    <p className="text-[1.75rem] font-bold leading-[1.05] tracking-[-0.04em] text-slate-950/92 lg:text-[2.2rem] dark:text-white/92">
+              <div
+                className={cn(
+                  'grid h-full grid-cols-1',
+                  SHOW_MASCOT_VISUALS && 'sm:grid-cols-[34%_66%] lg:grid-cols-[38%_62%]',
+                  isConversationExpanded ? 'pt-1 sm:pt-5' : 'pt-2 sm:pt-8',
+                )}
+              >
+                {SHOW_MASCOT_VISUALS && (
+                  <div className="relative hidden min-h-0 overflow-hidden bg-[radial-gradient(circle_at_32%_18%,rgba(103,232,249,0.34),transparent_24%),radial-gradient(circle_at_80%_16%,rgba(125,211,252,0.28),transparent_18%),linear-gradient(180deg,rgba(236,254,255,0.94)_0%,rgba(224,242,254,0.88)_46%,rgba(248,250,252,0.98)_100%)] sm:block dark:bg-[radial-gradient(circle_at_32%_18%,rgba(91,231,216,0.22),transparent_24%),radial-gradient(circle_at_80%_16%,rgba(96,121,234,0.22),transparent_18%),linear-gradient(180deg,rgba(18,28,59,0.58)_0%,rgba(9,14,30,0.82)_58%,rgba(3,7,18,0.96)_100%)]">
+                    <div className="pointer-events-none absolute -left-10 bottom-16 h-40 w-40 rounded-full bg-cyan-300/24 blur-3xl dark:bg-cyan-300/18" />
+                    <div className="pointer-events-none absolute right-0 top-12 h-28 w-28 rounded-full bg-sky-300/22 blur-3xl dark:bg-indigo-300/16" />
+                    <div className="pointer-events-none absolute left-5 top-6 z-10">
+                      <p className="text-[1.75rem] font-bold leading-[1.05] tracking-[-0.04em] text-slate-950/92 lg:text-[2.2rem] dark:text-white/92">
+                        Nova
+                      </p>
+                    </div>
+                    <div className="pointer-events-none absolute bottom-8 left-4 select-none text-[4.2rem] font-bold leading-none tracking-[-0.08em] text-slate-950/[0.05] lg:text-[5.6rem] dark:text-white/[0.05]">
                       Nova
-                    </p>
-                  </div>
-                  <div className="pointer-events-none absolute bottom-8 left-4 select-none text-[4.2rem] font-bold leading-none tracking-[-0.08em] text-slate-950/[0.05] lg:text-[5.6rem] dark:text-white/[0.05]">
-                    Nova
-                  </div>
-                  <div className="pointer-events-none absolute bottom-7 left-1/2 h-7 w-40 -translate-x-1/2 rounded-full bg-slate-950/12 blur-xl dark:bg-black/45" />
-                  <div className="relative flex h-full items-end justify-center pb-6 lg:pb-8">
-                    <div className="w-full max-w-[15rem] drop-shadow-[0_28px_30px_rgba(2,6,23,0.42)] lg:max-w-[18rem]">
-                      <MascotCharacter
-                        emotion={pendingReply ? 'waving' : emotion}
-                        size={320}
-                        animationKey={animationKey}
-                      />
+                    </div>
+                    <div className="pointer-events-none absolute bottom-7 left-1/2 h-7 w-40 -translate-x-1/2 rounded-full bg-slate-950/12 blur-xl dark:bg-black/45" />
+                    <div className="relative flex h-full items-end justify-center pb-6 lg:pb-8">
+                      <div className="w-full max-w-[15rem] drop-shadow-[0_28px_30px_rgba(2,6,23,0.42)] lg:max-w-[18rem]">
+                        <MascotCharacter
+                          emotion={pendingReply ? 'waving' : emotion}
+                          size={320}
+                          animationKey={animationKey}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex min-h-0 flex-col bg-[linear-gradient(180deg,rgba(255,255,255,0.5)_0%,rgba(255,255,255,0.2)_100%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]">
                   <AnimatePresence initial={false}>

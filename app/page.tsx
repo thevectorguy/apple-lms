@@ -13,6 +13,7 @@ import { PracticeScreen } from '@/components/lms/practice-screen'
 import { AIPracticeScreen } from '@/components/lms/ai-practice-screen'
 import { LeagueJourneyPage } from '@/components/lms/league-journey-page'
 import { MascotOverlay, type MascotTriggerEvent } from '@/components/lms/mascot-overlay'
+import { CelebrationConfetti, type CelebrationBurst } from '@/components/lms/celebration-confetti'
 import { ShareCelebrationCard, type ShareCardData } from '@/components/lms/share-celebration-card'
 import {
   currentUser, stories, allBadges, discussions, peerChallenges,
@@ -89,6 +90,7 @@ const COMPETENCY_WEIGHTS: Record<CompetencyEventType, number> = {
 }
 
 const SPEED_SIGNAL_WEIGHT = 0.55
+const GOOD_SCORE_THRESHOLD = 85
 
 const SPEED_STAGE_KEYS: SpeedStageKey[] = [
   'start_right',
@@ -681,6 +683,7 @@ export default function LMSPage() {
   const [openCourseId, setOpenCourseId] = useState<string | null>(null)
   const [resumeRewardModuleId, setResumeRewardModuleId] = useState<string | null>(null)
   const [xpToast, setXpToast] = useState<{ id: number; xp: number; label?: string } | null>(null)
+  const [celebrationBurst, setCelebrationBurst] = useState<CelebrationBurst | null>(null)
   const [mascotEvent, setMascotEvent] = useState<MascotTriggerEvent | null>(null)
   const prefersReducedMotion = useReducedMotion()
   const leagueJourney = buildLeagueJourneyState({
@@ -715,6 +718,16 @@ export default function LMSPage() {
     writeCourseProgressToStorage(courseProgress)
   }, [courseProgress, courseProgressHydrated])
 
+  useEffect(() => {
+    if (!celebrationBurst) return
+
+    const timeoutId = window.setTimeout(() => {
+      setCelebrationBurst(current => (current?.id === celebrationBurst.id ? null : current))
+    }, celebrationBurst.variant === 'reward' ? 1800 : 1550)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [celebrationBurst])
+
   const toggleTheme = () => {
     const newTheme = !isDark
     setIsDark(newTheme)
@@ -725,6 +738,16 @@ export default function LMSPage() {
   const triggerXPToast = useCallback((xp: number, label?: string) => {
     setXpToast({ id: Date.now(), xp, label })
   }, [])
+
+  const triggerCelebration = useCallback((variant: CelebrationBurst['variant'], label?: string) => {
+    if (prefersReducedMotion) return
+
+    setCelebrationBurst({
+      id: Date.now(),
+      label,
+      variant,
+    })
+  }, [prefersReducedMotion])
 
   const showMascot = useCallback((event: Omit<MascotTriggerEvent, 'id'> & { id?: string }) => {
     setMascotEvent({
@@ -780,7 +803,10 @@ export default function LMSPage() {
         ? 'game cleared'
         : 'from assessment'
     triggerXPToast(xpGain, toastLabel)
-  }, [activeTab, triggerXPToast])
+    if (score >= GOOD_SCORE_THRESHOLD) {
+      triggerCelebration('score', `${score}% score`)
+    }
+  }, [activeTab, triggerCelebration, triggerXPToast])
 
   const handleXPGain = useCallback((xp: number, label = 'from practice') => {
     setUser(prev => {
@@ -1088,9 +1114,9 @@ export default function LMSPage() {
     }
   }
   const consistencyPillStyle = {
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(245,247,250,0.86) 100%)',
-    boxShadow: '0 16px 28px -20px rgba(15,23,42,0.6), inset 0 1px 0 rgba(255,255,255,0.92)',
+    background: 'rgba(255,255,255,0.52)',
+    backdropFilter: 'blur(12px)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.85)',
   }
   const heroSurfaceStyle = {
     borderColor: 'rgba(255,255,255,0.72)',
@@ -1101,18 +1127,21 @@ export default function LMSPage() {
     borderColor: `${currentLeagueTier.theme.highlight}24`,
     backgroundImage: `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 52%), linear-gradient(135deg, rgba(255,255,255,0.88) 0%, ${currentLeagueTier.theme.accentSoft} 100%)`,
   }
+  // Practice with Nova — vivid violet/fuchsia liquid glass (LIGHT)
   const novaSurfaceStyle = {
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundImage: 'radial-gradient(circle at 16% 18%, rgba(168,85,247,0.22), transparent 28%), radial-gradient(circle at 86% 16%, rgba(34,211,238,0.18), transparent 26%), radial-gradient(circle at 50% 100%, rgba(236,72,153,0.14), transparent 34%), repeating-linear-gradient(135deg, rgba(255,255,255,0.028) 0 1px, transparent 1px 18px), linear-gradient(180deg, rgba(46,28,74,0.94) 0%, rgba(14,18,34,0.88) 100%)',
-    boxShadow: '0 34px 60px -36px rgba(15,23,42,0.72), inset 0 1px 0 rgba(255,255,255,0.06)',
+    background: 'linear-gradient(135deg, rgba(167,139,250,0.62) 0%, rgba(192,132,252,0.48) 45%, rgba(236,72,153,0.32) 75%, rgba(186,230,253,0.38) 100%)',
+    backdropFilter: 'blur(28px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+    boxShadow: '0 32px 64px -28px rgba(124,58,237,0.38), inset 0 1px 0 rgba(255,255,255,0.65)',
   }
   const novaFrostStyle = {
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundImage: 'radial-gradient(circle at 100% 0%, rgba(167,139,250,0.16), transparent 52%), linear-gradient(180deg, rgba(63,40,94,0.82) 0%, rgba(18,23,40,0.72) 100%)',
+    background: 'rgba(255,255,255,0.52)',
+    backdropFilter: 'blur(14px)',
   }
   const novaMetricStyle = {
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundImage: 'radial-gradient(circle at 100% 0%, rgba(34,211,238,0.14), transparent 42%), linear-gradient(180deg, rgba(52,36,78,0.8) 0%, rgba(18,23,40,0.72) 100%)',
+    background: 'rgba(255,255,255,0.42)',
+    backdropFilter: 'blur(14px) saturate(160%)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)',
   }
   const leagueSurfaceStyle = {
     borderColor: `${currentLeagueTier.theme.highlight}1f`,
@@ -1167,9 +1196,10 @@ export default function LMSPage() {
       : 'radial-gradient(circle at 12% 18%, rgba(251,191,36,0.16), transparent 24%), radial-gradient(circle at 88% 12%, rgba(99,102,241,0.14), transparent 24%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(244,245,255,0.58) 100%)',
   }
   const consistencySurfaceStyle = {
-    backgroundImage: isDark
-      ? 'radial-gradient(circle at 10% 16%, rgba(251,191,36,0.12), transparent 24%), radial-gradient(circle at 86% 18%, rgba(59,130,246,0.1), transparent 22%), linear-gradient(180deg, rgba(24,29,42,0.84) 0%, rgba(12,16,27,0.72) 100%)'
-      : 'radial-gradient(circle at 10% 16%, rgba(251,191,36,0.2), transparent 24%), radial-gradient(circle at 86% 18%, rgba(96,165,250,0.16), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,247,229,0.56) 100%)',
+    background: 'linear-gradient(135deg, rgba(251,191,36,0.65) 0%, rgba(249,115,22,0.46) 55%, rgba(253,230,138,0.38) 100%)',
+    backdropFilter: 'blur(24px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+    boxShadow: '0 20px 48px -20px rgba(234,88,12,0.38), inset 0 1px 0 rgba(255,255,255,0.60)',
   }
   const badgeTileStyle = {
     backgroundImage: isDark
@@ -1242,6 +1272,7 @@ export default function LMSPage() {
       {xpToast && (
         <XPToast key={xpToast.id} xp={xpToast.xp} label={xpToast.label} onDone={() => setXpToast(null)} />
       )}
+      <CelebrationConfetti burst={celebrationBurst} />
 
       {shareDraft && (
         <ShareComposerModal
@@ -1373,7 +1404,8 @@ export default function LMSPage() {
                     </p>
                   </div>
 
-                  <motion.button                    whileHover={subtleHover}
+                  <motion.button
+                    whileHover={subtleHover}
                     whileTap={pressDown}
                     onClick={() => handleTabChange('leagues')}
                     className="ios-frost flex items-center gap-2 rounded-full px-3 py-2 text-left"
@@ -1387,48 +1419,50 @@ export default function LMSPage() {
                   </motion.button>
                 </div>
 
+                {/* Quick Stats — Apple widget style */}
                 <div className="grid grid-cols-3 gap-2.5">
-                  {quickStats.map(({ label, value, helper, icon: Icon, tint, glow }, index) => (
+                  {quickStats.map(({ label, value, helper, icon: Icon, tint }, index) => (
                     <motion.div
                       key={label}
                       initial={getRevealProps(0.12 + (index * 0.05)).initial}
                       animate={getRevealProps(0.12 + (index * 0.05)).animate}
                       transition={getRevealProps(0.12 + (index * 0.05)).transition}
                       whileHover={hoverLift}
-                      className="ios-frost relative overflow-hidden rounded-[1.45rem] px-3 py-3.5"
+                      className="ios-frost relative overflow-hidden rounded-[1.55rem] p-3.5"
                       style={getQuickStatCardStyle(label)}
                     >
-                      <div className={cn('absolute inset-0 bg-gradient-to-br opacity-80', glow)} />
-                      <div className="relative flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                          <p className="mt-2 truncate text-[1.18rem] font-bold tracking-[-0.045em] text-foreground sm:text-[1.28rem]">
-                            {value}
-                          </p>
-                          <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground max-sm:hidden">{helper}</p>
+                      {/* Icon row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full" style={getQuickStatIconShellStyle(label)}>
+                          <Icon className={cn('h-4 w-4', tint)} />
                         </div>
-                        <div className="ios-icon-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9" style={getQuickStatIconShellStyle(label)}>
-                          <Icon className={cn('h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]', tint)} />
-                        </div>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground/80">{label}</p>
                       </div>
+                      {/* Big number */}
+                      <p className="mt-3 text-[1.65rem] font-black leading-none tracking-[-0.06em] text-foreground">
+                        {value}
+                      </p>
+                      <p className="mt-1.5 text-[10px] font-medium leading-tight text-muted-foreground line-clamp-2">{helper}</p>
                     </motion.div>
                   ))}
                 </div>
 
-                <div className="ios-frost rounded-[1.7rem] p-3" style={consistencySurfaceStyle}>
+                {/* Consistency — wide bold number treatment */}
+                <div className="ios-frost rounded-[1.7rem] px-4 py-3.5" style={consistencySurfaceStyle}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Consistency</p>
-                      <p className="mt-1 text-sm font-bold tracking-[-0.02em] text-foreground">
-                        {Math.min(user.streak, 7)}/7 days lit this week
+                      <p className="text-[9px] font-bold uppercase tracking-[0.26em] text-muted-foreground">Consistency</p>
+                      <p className="mt-1.5 text-[1.55rem] font-black leading-none tracking-[-0.06em] text-foreground">
+                        {Math.min(user.streak, 7)}<span className="text-base font-semibold text-muted-foreground">/7</span>
                       </p>
+                      <p className="mt-1 text-[11px] font-medium text-muted-foreground">days lit this week</p>
                     </div>
-                    <div className="rounded-full border px-3 py-1 text-xs font-semibold text-foreground" style={consistencyPillStyle}>
+                    <div className="rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-foreground" style={consistencyPillStyle}>
                       +50 XP daily
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-7 gap-2">
+                  <div className="mt-3 grid grid-cols-7 gap-1.5">
                     {streakDays.map((day, index) => {
                       const isActive = index < Math.min(user.streak, 7)
 
@@ -1437,14 +1471,14 @@ export default function LMSPage() {
                           key={`${day}-${index}`}
                           whileHover={subtleHover}
                           className={cn(
-                            'rounded-[1.2rem] border px-2 py-2.5 text-center transition-colors',
+                            'rounded-[1.1rem] border py-2.5 text-center transition-colors',
                             isActive
-                              ? 'border-white/80 bg-white/80 text-foreground shadow-[0_14px_26px_-18px_rgba(59,130,246,0.45)] dark:border-white/10 dark:bg-slate-900/76 dark:text-white dark:shadow-[0_16px_28px_-18px_rgba(56,189,248,0.34)]'
-                              : 'border-white/50 bg-white/35 text-muted-foreground dark:border-white/8 dark:bg-slate-950/55'
+                              ? 'border-white/80 bg-white/80 text-foreground shadow-[0_10px_22px_-16px_rgba(59,130,246,0.45)] dark:border-white/10 dark:bg-slate-900/76 dark:text-white'
+                              : 'border-white/40 bg-white/25 text-muted-foreground dark:border-white/8 dark:bg-slate-950/55'
                           )}
                         >
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">{day}</p>
-                          <Flame className={cn('mx-auto mt-2 h-3.5 w-3.5', isActive ? 'text-amber-500' : 'text-muted-foreground/60')} />
+                          <p className="text-[9px] font-bold uppercase tracking-[0.12em]">{day}</p>
+                          <Flame className={cn('mx-auto mt-1.5 h-3 w-3', isActive ? 'text-amber-500' : 'text-muted-foreground/40')} />
                         </motion.div>
                       )
                     })}
@@ -1475,7 +1509,7 @@ export default function LMSPage() {
                           <Play className="h-3.5 w-3.5 fill-white" />
                           Continue learning
                         </div>
-                        <h3 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.05em] text-white">
+                        <h3 className="mt-3 text-[1.55rem] font-black leading-tight tracking-[-0.055em] text-white">
                           {inProgressCourse.title}
                         </h3>
                         <p className="mt-1 text-sm text-white/78">
@@ -1487,14 +1521,14 @@ export default function LMSPage() {
                     <div className="mt-4 space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Course progress</p>
-                          <p className="mt-1 text-base font-bold tracking-[-0.03em] text-foreground">
-                            {progressEpisodes}/{inProgressCourse.episodes.length} episodes complete
+                          <p className="text-[9px] font-bold uppercase tracking-[0.26em] text-muted-foreground">Course progress</p>
+                          <p className="mt-1.5 text-[1.55rem] font-black leading-none tracking-[-0.06em] text-foreground">
+                            {progressEpisodes}<span className="text-sm font-semibold text-muted-foreground">/{inProgressCourse.episodes.length} eps</span>
                           </p>
                         </div>
-                        <div className="rounded-full bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-slate-900/76 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Progress</p>
-                          <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
+                        <div className="rounded-[1.15rem] border bg-white/70 px-4 py-2.5 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-slate-900/76 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                          <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-muted-foreground">Done</p>
+                          <p className="mt-1 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">
                             {Math.round(courseProgressPercent)}%
                           </p>
                         </div>
@@ -1581,33 +1615,36 @@ export default function LMSPage() {
                   </div>
                 </div>
 
-                <h3 className="mt-4 text-[1.72rem] font-bold tracking-[-0.055em] text-foreground">
-                  Practice with Nova
+                <h3 className="mt-4 text-[2.05rem] font-black leading-[0.9] tracking-[-0.07em] text-foreground uppercase">
+                  Practice<br />with Nova
                 </h3>
-                <p className="mt-2.5 text-sm leading-6 text-muted-foreground">
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
                   Run a guided roleplay, get feedback immediately, and keep your readiness signal moving in the right direction.
                 </p>
 
                 <div className="mt-4 grid grid-cols-3 gap-2.5">
                   <div className="ios-frost rounded-[1.25rem] px-3 py-2.5" style={novaMetricStyle}>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Readiness</p>
-                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">{skillProfile.readinessScore}%</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Readiness</p>
+                    <p className="mt-2 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">{skillProfile.readinessScore}<span className="text-xs font-bold text-muted-foreground">%</span></p>
                   </div>
                   <div className="ios-frost rounded-[1.25rem] px-3 py-2.5" style={novaMetricStyle}>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gap</p>
-                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">
-                      {skillProfile.weakAreas[0] ? `${skillProfile.skillGapByCategory[skillProfile.weakAreas[0]]}%` : '0%'}
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Gap</p>
+                    <p className="mt-2 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">
+                      {skillProfile.weakAreas[0] ? skillProfile.skillGapByCategory[skillProfile.weakAreas[0]] : 0}<span className="text-xs font-bold text-muted-foreground">%</span>
                     </p>
                   </div>
                   <div className="ios-frost rounded-[1.25rem] px-3 py-2.5" style={novaMetricStyle}>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Signals</p>
-                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">{skillProfile.competencyHistory.length}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Signals</p>
+                    <p className="mt-2 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">{skillProfile.competencyHistory.length}</p>
                   </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-muted-foreground">+50 XP each focused session</p>
-                  <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_34px_-20px_rgba(124,58,237,0.5)]">
+                  <p className="text-sm font-semibold text-violet-950/55">+50 XP each session</p>
+                  <div
+                    className="flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold text-violet-900"
+                    style={{ background: 'rgba(255,255,255,0.62)', backdropFilter: 'blur(14px)', boxShadow: '0 8px 24px -10px rgba(124,58,237,0.28), inset 0 1px 0 rgba(255,255,255,0.9)' }}
+                  >
                     Start session
                     <ChevronRight className="h-4 w-4" />
                   </div>
@@ -2037,6 +2074,7 @@ export default function LMSPage() {
             onShareGameScore={handleShareGameScore}
             onShareAssessmentResult={handleShareAssessmentResult}
             onShareModuleReward={handleShareModuleReward}
+            onCelebrate={({ variant, label }) => triggerCelebration(variant, label)}
             onMascotTrigger={showMascot}
           />
         </div>

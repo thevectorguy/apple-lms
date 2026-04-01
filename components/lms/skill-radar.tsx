@@ -162,107 +162,120 @@ export function SkillRadar({ profile, compact = false, onOpenDetail, onSkillSele
   if (compact) {
     return (
       <>
-        <div className="ios-shell relative overflow-hidden rounded-[2rem] p-5">
-          <div className="pointer-events-none absolute inset-x-10 top-0 h-px rounded-full bg-white/70 dark:bg-white/18" />
-          <div className="pointer-events-none absolute -left-8 top-0 h-24 w-24 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/12" />
-          <div className="pointer-events-none absolute right-0 top-8 h-24 w-24 rounded-full bg-indigo-200/25 blur-3xl dark:bg-indigo-500/10" />
-          <div className="pointer-events-none absolute bottom-0 left-1/3 h-20 w-20 rounded-full bg-cyan-200/20 blur-3xl dark:bg-cyan-400/8" />
-          <div className="relative flex items-start gap-4">
-            <button
-              type="button"
-              onClick={() => openDetail()}
-              className="ios-frost relative mt-1 flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full transition-transform duration-300 hover:scale-[1.02]"
-              aria-label="Open readiness details"
-            >
-              <svg className="h-full w-full -rotate-90">
-                <circle cx="48" cy="48" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-200/90 dark:text-slate-700" />
-                <circle
-                  cx="48"
-                  cy="48"
-                  r="42"
-                  fill="none"
-                  stroke="url(#readinessGradientCompact)"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(readinessScore / 100) * 263.9} 263.9`}
-                />
-                <defs>
-                  <linearGradient id="readinessGradientCompact" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#8cc0ff" />
-                    <stop offset="100%" stopColor="#4f78f2" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center leading-none">
-                  <span className="text-[2rem] font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">{readinessScore}</span>
-                  <span className="mt-1 block text-[9px] font-medium tracking-[0.18em] text-slate-500 dark:text-slate-400">READINESS</span>
-                </div>
-              </div>
-            </button>
+        <div
+          className="relative overflow-hidden rounded-[2rem] p-5"
+          style={{
+            background: 'rgba(255,255,255,0.82)',
+            backdropFilter: 'blur(32px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(32px) saturate(160%)',
+            boxShadow: '0 24px 56px -24px rgba(51,65,85,0.22), inset 0 1px 0 rgba(255,255,255,0.95)',
+          }}
+        >
+          {/* Very subtle ambient orbs — barely visible */}
+          <div className="pointer-events-none absolute -left-8 top-0 h-28 w-28 rounded-full bg-sky-200/30 blur-[48px]" />
+          <div className="pointer-events-none absolute right-0 top-4 h-24 w-24 rounded-full bg-indigo-200/22 blur-[40px]" />
+          <div className="pointer-events-none absolute bottom-0 left-1/3 h-20 w-20 rounded-full bg-slate-200/25 blur-[32px]" />
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Sales readiness</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Your strongest lift points for this week.</p>
+          <div className="relative">
+            {/* Card header */}
+            <div className="mb-5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Profile signal</p>
+              <h3 className="text-2xl font-extrabold tracking-tight text-slate-900">Sales Readiness</h3>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <button
+                type="button"
+                onClick={() => openDetail()}
+                className="relative mt-1 flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full transition-transform duration-300 hover:scale-[1.02]"
+                style={{ background: 'rgba(226,232,240,0.5)', backdropFilter: 'blur(12px)', boxShadow: '0 8px 24px -10px rgba(13,148,136,0.4), inset 0 1px 0 rgba(255,255,255,0.75)' }}
+                aria-label="Open readiness details"
+              >
+                <svg className="h-full w-full -rotate-90">
+                  <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="8" />
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="42"
+                    fill="none"
+                    stroke="url(#readinessGradientCompact)"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(readinessScore / 100) * 263.9} 263.9`}
+                  />
+                  <defs>
+                    <linearGradient id="readinessGradientCompact" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#059669" />
+                      <stop offset="100%" stopColor="#0d9488" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center leading-none">
+                    <span className="text-4xl font-extrabold tracking-tight text-slate-900">{readinessScore}</span>
+                    <span className="mt-1.5 block text-[9px] font-bold uppercase tracking-wider text-slate-400">READY</span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openDetail()}
-                  className="inline-flex items-center gap-1 rounded-full bg-white/60 px-3 py-1 text-xs font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition-colors hover:text-primary/80 dark:bg-slate-900/76 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                >
-                  View details
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {skillLabels.map((skill) => {
-                  const value = radarData[skill.key]
-                  const isWeak = weakAreas.includes(skill.key)
-                  const trackClass = isWeak
-                    ? 'bg-rose-200/90 dark:bg-rose-950/30'
-                    : 'bg-slate-200/90 dark:bg-slate-800/90'
-                  const fillClass = isWeak
-                    ? 'bg-[linear-gradient(90deg,rgba(251,113,133,0.95)_0%,rgba(251,146,60,0.95)_100%)]'
-                    : 'bg-[linear-gradient(90deg,rgba(142,197,255,0.95)_0%,rgba(88,122,255,0.92)_100%)]'
-                  return (
-                    <button
-                      key={skill.key}
-                      type="button"
-                      onClick={() => handleSkillClick(skill.key)}
-                      className={cn(
-                        'ios-frost w-full rounded-[1.45rem] px-4 py-3.5 text-left transition-all duration-300 hover:-translate-y-0.5',
-                        isWeak
-                          ? 'border-rose-200/80 bg-rose-50/75 dark:border-rose-900/30 dark:bg-rose-950/16'
-                          : 'border-white/70 bg-white/45 dark:border-white/8 dark:bg-slate-950/52',
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2.5">
-                            <div className={cn('h-2.5 w-2.5 rounded-full', isWeak ? 'bg-rose-400' : 'bg-sky-400')} />
-                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{skill.label}</span>
+              </button>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => openDetail()}
+                    className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold text-slate-900 transition-colors" style={{ background: 'rgba(255,255,255,0.50)', backdropFilter: 'blur(10px)' }}
+                  >
+                    View details
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {skillLabels.map((skill) => {
+                    const value = radarData[skill.key]
+                    const isWeak = weakAreas.includes(skill.key)
+                    return (
+                      <button
+                        key={skill.key}
+                        type="button"
+                        onClick={() => handleSkillClick(skill.key)}
+                        className="w-full rounded-[1.3rem] px-4 py-3 text-left transition-all duration-300 hover:-translate-y-0.5"
+                        style={{
+                          background: isWeak ? 'rgba(255,241,242,0.9)' : 'rgba(248,250,252,0.9)',
+                          border: isWeak ? '1px solid rgba(253,164,175,0.4)' : '1px solid rgba(226,232,240,0.8)',
+                          boxShadow: '0 2px 8px rgba(15,23,42,0.04)',
+                        }}
+                      >
+                        <div className="flex flex-col">
+                          <div className="flex items-start gap-2">
+                            <div className={cn('mt-1.5 h-2 w-2 flex-shrink-0 rounded-full', isWeak ? 'bg-rose-500' : 'bg-emerald-500')} />
+                            <span className="text-[14px] font-semibold tracking-tight leading-tight text-slate-800">
+                              {skill.label}
+                            </span>
                           </div>
-                          <p className="mt-1 text-[11px] font-semibold tracking-[0.12em] text-slate-500 dark:text-slate-400">
-                            {isWeak ? 'Focus area' : 'On track'}
-                          </p>
+                          <div className="mt-4 flex flex-row items-end justify-between gap-2">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+                              {isWeak ? 'Focus area' : 'On track'}
+                            </p>
+                            <span className="text-2xl font-extrabold tracking-tight text-slate-900 leading-none">
+                              {value}<span className="text-[11px] font-medium text-slate-400 ml-0.5">%</span>
+                            </span>
+                          </div>
                         </div>
-                        <span className="rounded-full bg-white/65 px-2.5 py-1 text-xs font-semibold text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-slate-900/72 dark:text-slate-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                          {value}%
-                        </span>
-                      </div>
-                      <div className={cn('mt-3 h-1.5 overflow-hidden rounded-full', trackClass)}>
-                        <div
-                          className={cn('h-full rounded-full shadow-[0_12px_24px_-16px_rgba(59,130,246,0.65)]', fillClass)}
-                          style={{ width: `${value}%` }}
-                        />
-                      </div>
-                    </button>
-                  )
-                })}
+                        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.45)' }}>
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${value}%`,
+                              background: isWeak
+                                ? 'linear-gradient(90deg, #fb7185, #f97316)'
+                                : 'linear-gradient(90deg, #34d399, #0d9488)',
+                            }}
+                          />
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>

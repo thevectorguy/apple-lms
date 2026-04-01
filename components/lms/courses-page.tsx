@@ -61,6 +61,7 @@ interface CoursesPageProps {
     module: Module
     courseTitle: string
   }) => void
+  onCelebrate?: (payload: { variant: 'reward' | 'score'; label?: string }) => void
   onMascotTrigger?: (event: Omit<MascotTriggerEvent, 'id'> & { id?: string }) => void
 }
 
@@ -80,6 +81,8 @@ function getNextAvailableEpisode(course: Course, completedEpisodes: Set<string>)
     ?? getCourseEpisodes(course).find(episode => !episode.locked)
     ?? null
 }
+
+const GOOD_SCORE_THRESHOLD = 85
 
 function buildInitialCompletionState(courses: Course[]) {
   const completedEpisodes = new Set<string>()
@@ -140,6 +143,7 @@ export function CoursesPage({
   onShareGameScore,
   onShareAssessmentResult,
   onShareModuleReward,
+  onCelebrate,
   onMascotTrigger,
 }: CoursesPageProps) {
   const initialCompletionState = progressState ?? buildInitialCompletionState(courses)
@@ -235,6 +239,19 @@ export function CoursesPage({
         return next
       })
     }
+    if (passed && assessment) {
+      onCelebrate?.({
+        variant: 'reward',
+        label: assessment.badgeReward?.name
+          ? `${assessment.badgeReward.name} unlocked`
+          : 'Assessment cleared',
+      })
+    } else if (score >= GOOD_SCORE_THRESHOLD) {
+      onCelebrate?.({
+        variant: 'score',
+        label: `${score}% score`,
+      })
+    }
     setAiRecommendation(null)
     setActiveAssessment(null)
   }
@@ -258,6 +275,12 @@ export function CoursesPage({
         score,
         sourceId: game.id,
         sourceTitle: game.title,
+      })
+    }
+    if (score >= GOOD_SCORE_THRESHOLD) {
+      onCelebrate?.({
+        variant: 'score',
+        label: `${game.title} ${score}%`,
       })
     }
     setActiveGame(null)
@@ -301,8 +324,12 @@ export function CoursesPage({
         sourceId: courseModule.id,
         sourceTitle: `${courseModule.title} complete`,
       })
+      onCelebrate?.({
+        variant: 'reward',
+        label: `${courseModule.title} reward unlocked`,
+      })
     })
-  }, [completedAssessments, completedEpisodes, completedGames, completedModules, completedRoleplays, onCompetencyEvent, selectedCourse])
+  }, [completedAssessments, completedEpisodes, completedGames, completedModules, completedRoleplays, onCelebrate, onCompetencyEvent, selectedCourse])
 
   const generateRecommendation = (score: number): AIRecommendation => {
     if (score >= 80) {

@@ -49,6 +49,13 @@ interface EpisodeFeedProps {
   onMascotTrigger?: (event: Omit<MascotTriggerEvent, 'id'> & { id?: string }) => void
 }
 
+// Keep the feed-level Nova shortcut in the codebase for later, but hide it for
+// now so it does not float over the episode scroll.
+const SHOW_FEED_NOVA_BUTTON = false
+// Keep the feed-triggered Nova hints/celebrations in the codebase for later,
+// but turn them off for now so they do not keep appearing while browsing.
+const SHOW_FEED_MASCOT_HINTS = false
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Build interleaved feed: episodes + assessments after every 2 episodes
 // ─────────────────────────────────────────────────────────────────────────────
@@ -322,6 +329,7 @@ export function EpisodeFeed({
     eventKey: string,
     event: Omit<MascotTriggerEvent, 'id'>,
   ) => {
+    if (!SHOW_FEED_MASCOT_HINTS) return
     if (!onMascotTrigger) return
     if (mascotMomentsRef.current.has(eventKey)) return
     mascotMomentsRef.current.add(eventKey)
@@ -816,26 +824,28 @@ export function EpisodeFeed({
             <span className="text-xs font-semibold text-white drop-shadow-lg">{fmt(ep.xp)}</span>
           </motion.button>
 
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => {
-              onMascotTrigger?.({
-                id: `chat-${ep.id}-${Date.now()}`,
-                trigger: 'chat',
-                title: `Nova opened from ${ep.title}`,
-                message: `Ask about ${ep.title}, your next move, or how to clean up the weak spots before the next checkpoint.`,
-                emotion: 'excited',
-                courseTitle: course.title,
-                itemTitle: ep.title,
-                skill: course.skillCategory,
-                openChat: true,
-              })
-            }}
-            className="flex flex-col items-center gap-1"
-          >
-            <MessageCircle className="w-7 h-7 text-white drop-shadow-lg" />
-            <span className="text-xs font-semibold text-white drop-shadow-lg">Chat</span>
-          </motion.button>
+          {SHOW_FEED_NOVA_BUTTON && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => {
+                onMascotTrigger?.({
+                  id: `chat-${ep.id}-${Date.now()}`,
+                  trigger: 'chat',
+                  title: `Nova opened from ${ep.title}`,
+                  message: `Ask about ${ep.title}, your next move, or how to clean up the weak spots before the next checkpoint.`,
+                  emotion: 'excited',
+                  courseTitle: course.title,
+                  itemTitle: ep.title,
+                  skill: course.skillCategory,
+                  openChat: true,
+                })
+              }}
+              className="flex flex-col items-center gap-1"
+            >
+              <MessageCircle className="w-7 h-7 text-white drop-shadow-lg" />
+              <span className="text-xs font-semibold text-white drop-shadow-lg">Chat</span>
+            </motion.button>
+          )}
 
           <motion.button whileTap={{ scale: 0.9 }} onClick={toggleSave} className="flex flex-col items-center gap-1">
             <Bookmark className={cn('w-7 h-7 drop-shadow-lg', savedEps.has(ep.id) ? 'text-primary fill-primary' : 'text-white')} />
