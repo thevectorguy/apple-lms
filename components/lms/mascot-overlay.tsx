@@ -64,7 +64,7 @@ interface MascotOverlayProps {
   event: MascotTriggerEvent | null
 }
 
-const INTRO_STORAGE_KEY = 'snaplearn-mascot-intro-seen-v1'
+const INTRO_STORAGE_KEY = 'snaplearn-mascot-intro-seen-v2'
 
 const entranceSpring = { type: 'spring' as const, stiffness: 200, damping: 15 }
 const bounceSpring = { type: 'spring' as const, stiffness: 260, damping: 14 }
@@ -88,8 +88,8 @@ const introStepVariants = {
   }),
 }
 
-// Keep the mascot experience in the codebase for later, but hide the visual
-// mascot and welcome flow until the production mascot is ready.
+// Keep the mascot experience and welcome cards in the codebase for later, but
+// hide that flow for now so the Nova CTA opens chat immediately.
 const SHOW_MASCOT_VISUALS = false
 const SHOW_MASCOT_WELCOME_FLOW = false
 const SHOW_MASCOT_AUTO_NUDGES = false

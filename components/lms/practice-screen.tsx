@@ -20,7 +20,9 @@ import {
   Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SpeedChecklistSummary } from '@/components/lms/speed-checklist-summary'
 import { SpeedMcqGame } from '@/components/lms/games/speed-mcq-game'
+import { projectSpeedFrameworkStages } from '@/lib/speed-framework'
 import { cn } from '@/lib/utils'
 import type { Course, MiniGame, SkillCategory, SkillUpdateContext, SpeedStageKey, UserSkillProfile } from '@/lib/types'
 
@@ -269,11 +271,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 function SessionComplete({
   result,
   duration,
+  speedStages,
   onClose,
   onRestart,
 }: {
   result: ReturnType<typeof buildSessionResult>
   duration: number
+  speedStages: UserSkillProfile['speedFramework']['stages']
   onClose: () => void
   onRestart: () => void
 }) {
@@ -302,6 +306,8 @@ function SessionComplete({
             <div className="mt-1 text-xs text-white/50">XP</div>
           </div>
         </div>
+
+        <SpeedChecklistSummary stages={speedStages} className="mt-5" />
 
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
@@ -339,6 +345,7 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [result, setResult] = useState<ReturnType<typeof buildSessionResult> | null>(null)
+  const [speedStageSnapshot, setSpeedStageSnapshot] = useState<UserSkillProfile['speedFramework']['stages'] | null>(null)
   const [dailyChallengeOpen, setDailyChallengeOpen] = useState(false)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const focusSkill = profile.weakAreas[0] ?? 'communication'
@@ -382,6 +389,7 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
     setMessages(buildInitialMessages(nextMode))
     setElapsedSeconds(0)
     setResult(null)
+    setSpeedStageSnapshot(null)
     setAiState('idle')
     setScreen('setup')
   }
@@ -427,13 +435,16 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
 
   const finishSession = () => {
     const nextResult = buildSessionResult(mode)
-    setResult(nextResult)
-    onStartPractice(coach.skill, nextResult.score, {
+    const practiceContext: SkillUpdateContext = {
       sourceId: `practice-${mode}`,
       sourceTitle: mode === 'pitch' ? 'Pitch Practice' : 'Avatar Roleplay',
       practiceMode: mode === 'pitch' ? 'pitch' : 'roleplay',
       speedSignals: buildSpeedSignals(mode, nextResult.score),
-    })
+    }
+
+    setResult(nextResult)
+    setSpeedStageSnapshot(projectSpeedFrameworkStages(profile.speedFramework.stages, nextResult.score, practiceContext))
+    onStartPractice(coach.skill, nextResult.score, practiceContext)
     setAiState('idle')
     setScreen('complete')
   }
@@ -558,6 +569,7 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
           <SessionComplete
             result={result}
             duration={elapsedSeconds}
+            speedStages={speedStageSnapshot ?? profile.speedFramework.stages}
             onClose={() => setScreen('landing')}
             onRestart={() => openMode(mode)}
           />

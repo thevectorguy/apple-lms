@@ -31,6 +31,7 @@ import {
   type LeagueRequirementProgress,
   type LeagueTierState,
 } from '@/lib/league-system'
+import { applySpeedSignalsToProfile } from '@/lib/speed-framework'
 import type {
   CompetencyEvent,
   CompetencyEventType,
@@ -42,8 +43,6 @@ import type {
   NextStepPlan,
   SkillCategory,
   SkillUpdateContext,
-  SpeedPracticeMode,
-  SpeedStageKey,
 } from '@/lib/types'
 
 type CompetencyEventInput = {
@@ -89,93 +88,7 @@ const COMPETENCY_WEIGHTS: Record<CompetencyEventType, number> = {
   ai_practice: 0.45,
 }
 
-const SPEED_SIGNAL_WEIGHT = 0.55
 const GOOD_SCORE_THRESHOLD = 85
-
-const SPEED_STAGE_KEYS: SpeedStageKey[] = [
-  'start_right',
-  'plan_to_probe',
-  'explain_value',
-  'eliminate_objection',
-  'drive_closure',
-]
-
-function clampScore(value: number) {
-  return Math.max(0, Math.min(100, Math.round(value)))
-}
-
-function resolveSpeedPracticeMode(mode?: SkillUpdateContext['practiceMode']): SpeedPracticeMode | undefined {
-  if (mode === 'pitch' || mode === 'roleplay' || mode === 'guided_ai') return mode
-  return undefined
-}
-
-function getDefaultSpeedSignals(mode: SpeedPracticeMode | undefined, score: number): Partial<Record<SpeedStageKey, number>> {
-  switch (mode) {
-    case 'pitch':
-      return {
-        start_right: clampScore(score + 4),
-        plan_to_probe: clampScore(score - 2),
-        explain_value: clampScore(score + 3),
-        eliminate_objection: clampScore(score - 1),
-        drive_closure: clampScore(score + 1),
-      }
-    case 'roleplay':
-      return {
-        start_right: clampScore(score + 1),
-        plan_to_probe: clampScore(score + 4),
-        explain_value: clampScore(score),
-        eliminate_objection: clampScore(score + 5),
-        drive_closure: clampScore(score + 2),
-      }
-    case 'guided_ai':
-      return {
-        start_right: clampScore(score + 2),
-        plan_to_probe: clampScore(score + 2),
-        explain_value: clampScore(score + 2),
-        eliminate_objection: clampScore(score + 2),
-        drive_closure: clampScore(score + 1),
-      }
-    default:
-      return {}
-  }
-}
-
-function applySpeedSignals(
-  profile: typeof userSkillProfile,
-  score: number,
-  context?: SkillUpdateContext,
-) {
-  const practiceMode = resolveSpeedPracticeMode(context?.practiceMode)
-  const incomingSignals = context?.speedSignals ?? getDefaultSpeedSignals(practiceMode, score)
-  const nextStages = { ...profile.speedFramework.stages }
-  let hasUpdates = false
-
-  SPEED_STAGE_KEYS.forEach(stageKey => {
-    const stageScore = incomingSignals[stageKey]
-    if (typeof stageScore !== 'number') return
-
-    const currentStage = nextStages[stageKey]
-    const currentScore = currentStage?.score ?? 0
-
-    nextStages[stageKey] = {
-      ...currentStage,
-      score: clampScore((currentScore * (1 - SPEED_SIGNAL_WEIGHT)) + (stageScore * SPEED_SIGNAL_WEIGHT)),
-      updatedAt: new Date().toISOString(),
-      sourceTitle: context?.sourceTitle ?? currentStage?.sourceTitle,
-      practiceMode: practiceMode ?? currentStage?.practiceMode,
-    }
-    hasUpdates = true
-  })
-
-  if (!hasUpdates) return profile
-
-  return {
-    ...profile,
-    speedFramework: {
-      stages: nextStages,
-    },
-  }
-}
 
 function getSkillGapByCategory(radarData: { communication: number; technical: number; leadership: number; compliance: number }) {
   return {
@@ -780,7 +693,7 @@ export default function LMSPage() {
       sourceTitle,
     )
 
-    setSkillProfile(prev => applySpeedSignals(applyCompetencyEvent(prev, event), score, context))
+    setSkillProfile(prev => applySpeedSignalsToProfile(applyCompetencyEvent(prev, event), score, context))
 
     const xpGain = Math.round(score * (eventType === 'ai_practice' ? 0.6 : 0.5))
     setUser(prev => {

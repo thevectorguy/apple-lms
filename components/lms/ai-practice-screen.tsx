@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, BookOpen, Brain, CheckCircle2, ChevronLeft, Mic, MicOff, PhoneOff, Sparkles, Target, Timer, TrendingUp, Volume2, X, Zap } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowRight, BookOpen, Brain, CheckCircle2, ChevronLeft, Mic, PhoneOff, Sparkles, Target, Timer, TrendingUp, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SpeedChecklistSummary } from '@/components/lms/speed-checklist-summary'
+import { projectSpeedFrameworkStages } from '@/lib/speed-framework'
 import { cn } from '@/lib/utils'
 import type { Course, SkillCategory, SkillUpdateContext, SpeedStageKey, UserSkillProfile } from '@/lib/types'
 
@@ -72,6 +74,7 @@ const PRACTICE_COACH = {
   role: 'AI Practice Coach',
   company: 'Readiness Studio',
   avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop&crop=face',
+  voiceGender: 'female' as const,
   duration: '4-6 min',
   xp: 60,
 } as const
@@ -346,7 +349,7 @@ function buildPracticeSessionMessages(topic: string, focusLabel: string): Sessio
     {
       id: 'system-1',
       role: 'system',
-      content: `Practice mode ready. Focus area: ${focusLabel}. Tap Talk to respond.`,
+      content: `Practice mode ready. Focus area: ${focusLabel}. Press Start to begin.`,
     },
   ]
 }
@@ -513,6 +516,7 @@ function SessionMessageBubble({ message }: { message: SessionMessage }) {
 function PracticeComplete({
   result,
   duration,
+  speedStages,
   returnToCourseLabel,
   onClose,
   onRestart,
@@ -520,63 +524,72 @@ function PracticeComplete({
 }: {
   result: SessionResult
   duration: number
+  speedStages: UserSkillProfile['speedFramework']['stages']
   returnToCourseLabel?: string
   onClose: () => void
   onRestart: () => void
   onReturnToCourse?: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-xl rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(17,24,39,0.98)_100%)] p-6 text-white shadow-[0_30px_120px_rgba(2,6,23,0.55)]">
+    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-slate-950/38 p-3 backdrop-blur-md sm:items-center sm:p-4">
+      <div className="max-h-[calc(100svh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-[32px] border border-white/75 bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.18),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.98)_100%)] p-5 text-slate-950 shadow-[0_30px_120px_rgba(15,23,42,0.18)] sm:p-6">
         <div className="text-center">
-          <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg">
+          <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-full bg-[linear-gradient(180deg,#22c55e_0%,#10b981_100%)] text-white shadow-[0_18px_40px_rgba(16,185,129,0.24)]">
             <Sparkles className="h-8 w-8" />
           </div>
-          <h2 className="mt-4 text-2xl font-black">Practice complete</h2>
-          <p className="mt-1 text-sm text-white/70">Your readiness profile and SPEED benchmark have been updated.</p>
+          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">AI practice summary</p>
+          <h2 className="mt-2 text-[2rem] font-black tracking-[-0.045em] text-slate-950 sm:text-[2.2rem]">Practice complete</h2>
+          <p className="mt-2 text-[15px] font-medium leading-6 text-slate-600">
+            Your readiness profile and SPEED benchmark have been updated.
+          </p>
         </div>
 
         <div className="mt-6 grid grid-cols-3 gap-3">
-          <div className="rounded-2xl bg-white/5 p-4 text-center">
-            <div className="text-2xl font-black">{formatDuration(duration)}</div>
-            <div className="mt-1 text-xs text-white/50">Duration</div>
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/82 p-4 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <div className="text-[2rem] font-black tracking-[-0.05em] text-slate-950">{formatDuration(duration)}</div>
+            <div className="mt-1 text-[11px] font-semibold text-slate-500">Duration</div>
           </div>
-          <div className="rounded-2xl bg-white/5 p-4 text-center">
-            <div className="text-2xl font-black text-yellow-300">{result.score}%</div>
-            <div className="mt-1 text-xs text-white/50">Score</div>
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/82 p-4 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <div className="text-[2rem] font-black tracking-[-0.05em] text-amber-500">{result.score}%</div>
+            <div className="mt-1 text-[11px] font-semibold text-slate-500">Score</div>
           </div>
-          <div className="rounded-2xl bg-white/5 p-4 text-center">
-            <div className="text-2xl font-black text-cyan-300">+{result.xp}</div>
-            <div className="mt-1 text-xs text-white/50">XP</div>
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/82 p-4 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <div className="text-[2rem] font-black tracking-[-0.05em] text-cyan-500">+{result.xp}</div>
+            <div className="mt-1 text-[11px] font-semibold text-slate-500">XP</div>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Strengths</p>
-            <ul className="mt-3 space-y-2 text-sm text-white/80">
+        <SpeedChecklistSummary stages={speedStages} variant="light" className="mt-5" />
+
+        <div className="mt-5 space-y-3">
+          <div className="rounded-[26px] border border-emerald-200/90 bg-[linear-gradient(180deg,rgba(240,253,250,0.96)_0%,rgba(220,252,231,0.96)_100%)] p-5 shadow-[0_16px_40px_rgba(16,185,129,0.08)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Strengths</p>
+            <ul className="mt-4 space-y-3 text-[15px] font-medium leading-6 text-slate-700">
               {result.strengths.map(item => <li key={item}>- {item}</li>)}
             </ul>
           </div>
-          <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-yellow-300">Focus next</p>
-            <ul className="mt-3 space-y-2 text-sm text-white/80">
+          <div className="rounded-[26px] border border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96)_0%,rgba(254,249,195,0.9)_100%)] p-5 shadow-[0_16px_40px_rgba(245,158,11,0.08)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">Focus next</p>
+            <ul className="mt-4 space-y-3 text-[15px] font-medium leading-6 text-slate-700">
               {result.improvements.map(item => <li key={item}>- {item}</li>)}
             </ul>
+            <p className="mt-4 border-t border-amber-200/80 pt-3 text-[13px] font-medium leading-5 text-slate-500">
+              Visit the Profile section to see your updated SPEED scores.
+            </p>
           </div>
         </div>
 
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-3">
           {onReturnToCourse && returnToCourseLabel ? (
-            <Button className="flex-1 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 font-semibold text-slate-950 hover:opacity-95" onClick={onReturnToCourse}>
+            <Button className="h-12 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(14,165,233,0.22)] hover:opacity-95" onClick={onReturnToCourse}>
               {returnToCourseLabel}
             </Button>
           ) : (
-            <Button variant="outline" className="flex-1 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10" onClick={onClose}>
+            <Button variant="outline" className="h-12 rounded-full border-slate-200 bg-white text-slate-900 hover:bg-slate-50" onClick={onClose}>
               Done
             </Button>
           )}
-          <Button className="flex-1 rounded-full bg-gradient-to-r from-primary to-accent font-semibold text-white" onClick={onRestart}>
+          <Button className="h-12 rounded-full bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-400 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(56,189,248,0.26)] hover:opacity-95" onClick={onRestart}>
             Practice again
           </Button>
         </div>
@@ -627,10 +640,37 @@ export function AIPracticeScreen({
   const [sessionMessages, setSessionMessages] = useState<SessionMessage[]>([])
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
+  const [hasConversationStarted, setHasConversationStarted] = useState(false)
+  const [isLoopPaused, setIsLoopPaused] = useState(false)
   const [result, setResult] = useState<SessionResult | null>(null)
+  const [speedStageSnapshot, setSpeedStageSnapshot] = useState<UserSkillProfile['speedFramework']['stages'] | null>(null)
   const [sessionContext, setSessionContext] = useState<SessionContext | null>(null)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const autoStartedRef = useRef<string | null>(null)
+  const sessionMessagesRef = useRef<SessionMessage[]>([])
+  const mediaStreamRef = useRef<MediaStream | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const silenceIntervalRef = useRef<number | null>(null)
+  const listenTimeoutRef = useRef<number | null>(null)
+  const audioChunksRef = useRef<BlobPart[]>([])
+  const hasDetectedSpeechRef = useRef(false)
+  const lastSpeechAtRef = useRef<number | null>(null)
+  const shouldProcessRecordingRef = useRef(false)
+  const stopRequestedRef = useRef(false)
+  const isSubmittingTurnRef = useRef(false)
+  const hasConversationStartedRef = useRef(false)
+  const isLoopPausedRef = useRef(false)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+  const currentAudioUrlRef = useRef<string | null>(null)
+  const playbackResolveRef = useRef<((completed: boolean) => void) | null>(null)
+  const beginListeningRef = useRef<() => Promise<void>>(async () => {})
+
+  useEffect(() => {
+    sessionMessagesRef.current = sessionMessages
+  }, [sessionMessages])
 
   useEffect(() => {
     if (screen !== 'active') return
@@ -643,26 +683,527 @@ export function AIPracticeScreen({
     transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
   }, [sessionMessages, screen])
 
+  const clearListenTimeout = useCallback(() => {
+    if (listenTimeoutRef.current !== null) {
+      window.clearTimeout(listenTimeoutRef.current)
+      listenTimeoutRef.current = null
+    }
+  }, [])
+
+  const clearSilenceMonitor = useCallback(() => {
+    if (silenceIntervalRef.current !== null) {
+      window.clearInterval(silenceIntervalRef.current)
+      silenceIntervalRef.current = null
+    }
+  }, [])
+
+  const stopPlayback = useCallback(() => {
+    const resolver = playbackResolveRef.current
+    playbackResolveRef.current = null
+
+    if (currentAudioRef.current) {
+      currentAudioRef.current.onended = null
+      currentAudioRef.current.onerror = null
+      currentAudioRef.current.pause()
+      currentAudioRef.current.currentTime = 0
+      currentAudioRef.current = null
+    }
+
+    if (currentAudioUrlRef.current) {
+      URL.revokeObjectURL(currentAudioUrlRef.current)
+      currentAudioUrlRef.current = null
+    }
+
+    resolver?.(false)
+  }, [])
+
+  const releaseMicrophone = useCallback(() => {
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.disconnect()
+      sourceNodeRef.current = null
+    }
+
+    if (analyserRef.current) {
+      analyserRef.current.disconnect()
+      analyserRef.current = null
+    }
+
+    if (audioContextRef.current) {
+      const context = audioContextRef.current
+      audioContextRef.current = null
+      if (context.state !== 'closed') {
+        void context.close()
+      }
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop())
+      mediaStreamRef.current = null
+    }
+  }, [])
+
+  const stopRecorder = useCallback((processRecording: boolean) => {
+    clearSilenceMonitor()
+    shouldProcessRecordingRef.current = processRecording
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+      return
+    }
+
+    mediaRecorderRef.current = null
+  }, [clearSilenceMonitor])
+
+  const resetVoiceRuntime = useCallback((releaseMic: boolean) => {
+    stopRequestedRef.current = true
+    isSubmittingTurnRef.current = false
+    clearListenTimeout()
+    stopRecorder(false)
+    stopPlayback()
+
+    if (releaseMic) {
+      releaseMicrophone()
+    }
+
+    setAiState('idle')
+    setHasConversationStarted(false)
+    setIsLoopPaused(false)
+    hasConversationStartedRef.current = false
+    isLoopPausedRef.current = false
+  }, [clearListenTimeout, releaseMicrophone, stopPlayback, stopRecorder])
+
+  const appendSystemMessage = useCallback((content: string) => {
+    const trimmedContent = content.trim()
+    if (!trimmedContent) return
+
+    setSessionMessages(prev => [
+      ...prev,
+      {
+        id: `system-${Date.now()}`,
+        role: 'system',
+        content: trimmedContent,
+      },
+    ])
+  }, [])
+
+  const ensureMicrophoneAccess = useCallback(async () => {
+    if (mediaStreamRef.current) {
+      if (audioContextRef.current?.state === 'suspended') {
+        await audioContextRef.current.resume()
+      }
+      return mediaStreamRef.current
+    }
+
+    if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Microphone input is not supported in this browser.')
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    })
+
+    const AudioContextConstructor =
+      window.AudioContext ||
+      (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+
+    if (!AudioContextConstructor) {
+      stream.getTracks().forEach(track => track.stop())
+      throw new Error('Audio analysis is not supported in this browser.')
+    }
+
+    const context = new AudioContextConstructor()
+    await context.resume()
+
+    const sourceNode = context.createMediaStreamSource(stream)
+    const analyser = context.createAnalyser()
+    analyser.fftSize = 2048
+    sourceNode.connect(analyser)
+
+    mediaStreamRef.current = stream
+    audioContextRef.current = context
+    sourceNodeRef.current = sourceNode
+    analyserRef.current = analyser
+
+    return stream
+  }, [])
+
+  const decodeBase64ToBlob = useCallback((audioBase64: string, mimeType: string) => {
+    const binary = window.atob(audioBase64)
+    const bytes = new Uint8Array(binary.length)
+
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index)
+    }
+
+    return new Blob([bytes], { type: mimeType })
+  }, [])
+
+  const playAudioFromBase64 = useCallback(async (audioBase64: string, mimeType: string) => {
+    if (!audioBase64 || isMuted) {
+      return false
+    }
+
+    stopPlayback()
+
+    const blob = decodeBase64ToBlob(audioBase64, mimeType)
+    const audioUrl = URL.createObjectURL(blob)
+    const audio = new Audio(audioUrl)
+
+    currentAudioRef.current = audio
+    currentAudioUrlRef.current = audioUrl
+
+    return await new Promise<boolean>((resolve) => {
+      playbackResolveRef.current = resolve
+
+      const finalize = (completed: boolean) => {
+        if (playbackResolveRef.current) {
+          playbackResolveRef.current = null
+        }
+
+        if (currentAudioRef.current === audio) {
+          currentAudioRef.current = null
+        }
+
+        if (currentAudioUrlRef.current === audioUrl) {
+          URL.revokeObjectURL(audioUrl)
+          currentAudioUrlRef.current = null
+        }
+
+        resolve(completed)
+      }
+
+      audio.onended = () => finalize(true)
+      audio.onerror = () => finalize(false)
+      audio.play().catch(() => finalize(false))
+    })
+  }, [decodeBase64ToBlob, isMuted, stopPlayback])
+
+  const getSupportedAudioMimeType = useCallback(() => {
+    if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined') {
+      return ''
+    }
+
+    const supportedTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+    ]
+
+    return supportedTypes.find((type) => MediaRecorder.isTypeSupported(type)) ?? ''
+  }, [])
+
+  const scheduleListening = useCallback((callback: () => Promise<void>, delayMs = 200) => {
+    clearListenTimeout()
+
+    if (!hasConversationStartedRef.current || isLoopPausedRef.current || stopRequestedRef.current) {
+      return
+    }
+
+    listenTimeoutRef.current = window.setTimeout(() => {
+      listenTimeoutRef.current = null
+      void callback()
+    }, delayMs)
+  }, [clearListenTimeout])
+
+  const submitAudioTurn = useCallback(async (audioBlob: Blob, mimeType: string) => {
+    if (!selectedTopic) return
+
+    isSubmittingTurnRef.current = true
+    setAiState('thinking')
+
+    try {
+      const history = sessionMessagesRef.current
+        .filter((message) => message.role === 'ai' || message.role === 'user')
+        .slice(-12)
+        .map((message) => ({
+          role: message.role,
+          content: message.content,
+        }))
+
+      const formData = new FormData()
+      formData.append('audio', audioBlob, `practice-turn.${mimeType.includes('mp4') ? 'm4a' : 'webm'}`)
+      formData.append('scenario', selectedTopic)
+      formData.append('focusSkill', focusSkill)
+      formData.append('coachName', PRACTICE_COACH.name)
+      formData.append('coachGender', PRACTICE_COACH.voiceGender)
+      formData.append('history', JSON.stringify(history))
+
+      const response = await fetch('/api/ai-practice/respond', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Unable to process the recording.')
+      }
+
+      const transcript = typeof payload?.transcript === 'string' ? payload.transcript.trim() : ''
+      const reply = typeof payload?.reply === 'string' ? payload.reply.trim() : ''
+      const audioBase64 = typeof payload?.audioBase64 === 'string' ? payload.audioBase64 : ''
+      const audioMimeType = typeof payload?.audioMimeType === 'string' ? payload.audioMimeType : 'audio/wav'
+
+      if (!transcript) {
+        throw new Error('No speech was detected in the latest turn.')
+      }
+
+      if (!reply) {
+        throw new Error('The coach did not return a reply.')
+      }
+
+      setSessionMessages(prev => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: transcript,
+        },
+        {
+          id: `ai-${Date.now() + 1}`,
+          role: 'ai',
+          content: reply,
+        },
+      ])
+
+      if (isMuted || !audioBase64) {
+        setAiState('idle')
+        scheduleListening(beginListeningRef.current, 120)
+        return
+      }
+
+      setAiState('speaking')
+      const completedPlayback = await playAudioFromBase64(audioBase64, audioMimeType)
+      setAiState('idle')
+
+      if (completedPlayback) {
+        scheduleListening(beginListeningRef.current, 120)
+        return
+      }
+
+      if (!isLoopPausedRef.current && hasConversationStartedRef.current && !stopRequestedRef.current) {
+        scheduleListening(beginListeningRef.current, 0)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The coach could not process that turn.'
+      appendSystemMessage(message)
+      setAiState('idle')
+      scheduleListening(beginListeningRef.current, 250)
+    } finally {
+      isSubmittingTurnRef.current = false
+    }
+  }, [appendSystemMessage, focusSkill, isMuted, playAudioFromBase64, scheduleListening, selectedTopic])
+
+  const beginListening = useCallback(async () => {
+    if (
+      stopRequestedRef.current ||
+      isLoopPausedRef.current ||
+      isSubmittingTurnRef.current ||
+      !hasConversationStartedRef.current
+    ) {
+      return
+    }
+
+    try {
+      const stream = await ensureMicrophoneAccess()
+      const mimeType = getSupportedAudioMimeType()
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      const analyser = analyserRef.current
+
+      audioChunksRef.current = []
+      hasDetectedSpeechRef.current = false
+      lastSpeechAtRef.current = null
+      shouldProcessRecordingRef.current = true
+      mediaRecorderRef.current = recorder
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      recorder.onstop = async () => {
+        clearSilenceMonitor()
+        mediaRecorderRef.current = null
+
+        const shouldProcess = shouldProcessRecordingRef.current
+        const detectedSpeech = hasDetectedSpeechRef.current
+        const chunkData = [...audioChunksRef.current]
+
+        audioChunksRef.current = []
+        shouldProcessRecordingRef.current = false
+
+        if (!shouldProcess || !detectedSpeech || !chunkData.length) {
+          if (!stopRequestedRef.current && !isLoopPausedRef.current && hasConversationStartedRef.current) {
+            scheduleListening(beginListeningRef.current, 0)
+          }
+          return
+        }
+
+        const blob = new Blob(chunkData, { type: recorder.mimeType || mimeType || 'audio/webm' })
+        if (blob.size < 2048) {
+          if (!stopRequestedRef.current && !isLoopPausedRef.current && hasConversationStartedRef.current) {
+            scheduleListening(beginListeningRef.current, 0)
+          }
+          return
+        }
+
+        await submitAudioTurn(blob, recorder.mimeType || mimeType || 'audio/webm')
+      }
+
+      recorder.start()
+      setAiState('listening')
+
+      if (!analyser) {
+        appendSystemMessage('Audio analysis is unavailable, so the mic cannot auto-stop on silence.')
+        stopRecorder(false)
+        setAiState('idle')
+        setIsLoopPaused(true)
+        isLoopPausedRef.current = true
+        return
+      }
+
+      const sampleBuffer = new Uint8Array(analyser.fftSize)
+      clearSilenceMonitor()
+
+      silenceIntervalRef.current = window.setInterval(() => {
+        analyser.getByteTimeDomainData(sampleBuffer)
+
+        let averageDeviation = 0
+        for (let index = 0; index < sampleBuffer.length; index += 1) {
+          averageDeviation += Math.abs(sampleBuffer[index] - 128)
+        }
+
+        averageDeviation /= sampleBuffer.length * 128
+
+        if (averageDeviation > 0.03) {
+          hasDetectedSpeechRef.current = true
+          lastSpeechAtRef.current = Date.now()
+          return
+        }
+
+        if (
+          hasDetectedSpeechRef.current &&
+          lastSpeechAtRef.current &&
+          Date.now() - lastSpeechAtRef.current > 1200
+        ) {
+          stopRecorder(true)
+        }
+      }, 150)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to start the microphone.'
+      appendSystemMessage(message)
+      setAiState('idle')
+      setIsLoopPaused(true)
+      isLoopPausedRef.current = true
+    }
+  }, [appendSystemMessage, clearSilenceMonitor, ensureMicrophoneAccess, getSupportedAudioMimeType, scheduleListening, stopRecorder, submitAudioTurn])
+
+  const startConversationLoop = useCallback(async () => {
+    const opener = sessionMessagesRef.current.find((message) => message.role === 'ai')?.content?.trim()
+    if (!opener) return
+
+    stopRequestedRef.current = false
+    setHasConversationStarted(true)
+    setIsLoopPaused(false)
+    hasConversationStartedRef.current = true
+    isLoopPausedRef.current = false
+
+    try {
+      await ensureMicrophoneAccess()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to access the microphone.'
+      appendSystemMessage(message)
+      setAiState('idle')
+      setHasConversationStarted(false)
+      hasConversationStartedRef.current = false
+      return
+    }
+
+    try {
+      setAiState('speaking')
+      const response = await fetch('/api/ai-practice/speak', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: opener,
+          coachGender: PRACTICE_COACH.voiceGender,
+        }),
+      })
+
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Unable to play the opening line.')
+      }
+
+      if (!isMuted && typeof payload?.audioBase64 === 'string') {
+        await playAudioFromBase64(payload.audioBase64, typeof payload?.audioMimeType === 'string' ? payload.audioMimeType : 'audio/wav')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The opening line could not be played.'
+      appendSystemMessage(message)
+    } finally {
+      setAiState('idle')
+      scheduleListening(beginListeningRef.current, 120)
+    }
+  }, [appendSystemMessage, beginListening, ensureMicrophoneAccess, isMuted, playAudioFromBase64, scheduleListening])
+
+  const pauseConversationLoop = useCallback(() => {
+    setIsLoopPaused(true)
+    isLoopPausedRef.current = true
+    stopRequestedRef.current = false
+    clearListenTimeout()
+    stopRecorder(false)
+    stopPlayback()
+    setAiState('idle')
+  }, [clearListenTimeout, stopPlayback, stopRecorder])
+
+  const resumeConversationLoop = useCallback(() => {
+    if (!hasConversationStartedRef.current) return
+
+    stopRequestedRef.current = false
+    setIsLoopPaused(false)
+    isLoopPausedRef.current = false
+    setAiState('idle')
+    scheduleListening(beginListeningRef.current, 120)
+  }, [scheduleListening])
+
+  const prepareSession = useCallback((topic: string, nextContext: SessionContext) => {
+    resetVoiceRuntime(true)
+
+    const initialMessages = buildPracticeSessionMessages(topic, focusLabel)
+    sessionMessagesRef.current = initialMessages
+
+    setSelectedTopic(topic)
+    setTopicDraft(topic)
+    setPracticeOpen(false)
+    setSessionContext(nextContext)
+    setSessionMessages(initialMessages)
+    setElapsedSeconds(0)
+    setResult(null)
+    setSpeedStageSnapshot(null)
+    setAiState('idle')
+    setScreen('active')
+  }, [focusLabel, resetVoiceRuntime])
+
   useEffect(() => {
     if (!autoStartFromPlan) return
     const scenario = profile.nextStepPlan?.scenario
     if (scenario && profile.nextStepPlan?.type === 'ai_practice' && autoStartedRef.current !== scenario) {
       autoStartedRef.current = scenario
-      setSelectedTopic(scenario)
-      setTopicDraft(scenario)
-      setSessionContext({
+      prepareSession(scenario, {
         scenario,
         roleplayId: profile.nextStepPlan.roleplayId,
         courseId: profile.nextStepPlan.courseId,
       })
-      setSessionMessages(buildPracticeSessionMessages(scenario, formatSkillLabel(profile.nextStepPlan.skillCategory)))
-      setElapsedSeconds(0)
-      setResult(null)
-      setAiState('speaking')
-      setScreen('active')
-      window.setTimeout(() => setAiState('idle'), 1100)
     }
-  }, [autoStartFromPlan, profile.nextStepPlan])
+  }, [autoStartFromPlan, prepareSession, profile.nextStepPlan])
 
   const openPracticePanel = (initialTopic?: string) => {
     setPracticeOpen(true)
@@ -692,64 +1233,47 @@ export function AIPracticeScreen({
     const topic = (selectedTopic ?? topicDraft).trim()
     if (!topic) return
 
-    setSelectedTopic(topic)
-    setTopicDraft(topic)
-    setPracticeOpen(false)
-    setSessionContext({ scenario: topic })
-    setSessionMessages(buildPracticeSessionMessages(topic, focusLabel))
-    setElapsedSeconds(0)
-    setResult(null)
-    setAiState('speaking')
-    setScreen('active')
-    window.setTimeout(() => setAiState('idle'), 1100)
+    prepareSession(topic, { scenario: topic })
   }
 
-  const handleMicPress = () => {
-    const topic = selectedTopic?.trim()
-    if (!topic) return
+  const handleVoiceControlPress = () => {
+    if (!selectedTopic?.trim()) return
 
-    setAiState('listening')
-    window.setTimeout(() => {
-      setSessionMessages(prev => [
-        ...prev,
-        {
-          id: `user-${Date.now()}`,
-          role: 'user',
-          content: buildPracticeAttempt(focusSkill, topic),
-        },
-      ])
-      setAiState('thinking')
-    }, 900)
+    if (!hasConversationStartedRef.current) {
+      void startConversationLoop()
+      return
+    }
 
-    window.setTimeout(() => {
-      setSessionMessages(prev => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          role: 'ai',
-          content: buildPracticeFollowUp(focusSkill, topic),
-        },
-      ])
-      setAiState('speaking')
-    }, 2000)
+    if (isLoopPausedRef.current) {
+      resumeConversationLoop()
+      return
+    }
 
-    window.setTimeout(() => setAiState('idle'), 3200)
+    if (aiState === 'listening' || aiState === 'thinking') {
+      return
+    }
+
+    pauseConversationLoop()
   }
 
   const finishSession = () => {
+    resetVoiceRuntime(true)
+
     const nextResult = buildPracticeResult(focusSkill)
     const scenarioLabel = sessionContext?.scenario ?? selectedTopic ?? 'AI Coach Practice'
-    setResult(nextResult)
-    onSkillUpdate(focusSkill, nextResult.score, {
+    const practiceContext: SkillUpdateContext = {
       sourceId: sessionContext?.roleplayId ?? `guided-ai-${focusSkill}`,
       sourceTitle: scenarioLabel,
       practiceMode: 'guided_ai',
       speedSignals: buildGuidedSpeedSignals(focusSkill, scenarioLabel, nextResult.score),
-    })
+    }
+
+    setResult(nextResult)
+    setSpeedStageSnapshot(projectSpeedFrameworkStages(profile.speedFramework.stages, nextResult.score, practiceContext))
+    onSkillUpdate(focusSkill, nextResult.score, practiceContext)
     if (sessionContext?.roleplayId) {
       onRoleplayComplete?.(sessionContext.roleplayId)
     }
-    setAiState('idle')
     setScreen('complete')
   }
 
@@ -759,13 +1283,43 @@ export function AIPracticeScreen({
       return
     }
 
-    setSessionMessages(buildPracticeSessionMessages(selectedTopic, focusLabel))
-    setElapsedSeconds(0)
-    setResult(null)
-    setAiState('speaking')
-    setScreen('active')
-    window.setTimeout(() => setAiState('idle'), 1100)
+    prepareSession(selectedTopic, sessionContext ?? { scenario: selectedTopic })
   }
+
+  const handleReturnToDashboard = useCallback(() => {
+    resetVoiceRuntime(true)
+    setScreen('dashboard')
+  }, [resetVoiceRuntime])
+
+  useEffect(() => {
+    beginListeningRef.current = beginListening
+  }, [beginListening])
+
+  useEffect(() => {
+    if (!isMuted || !currentAudioRef.current) return
+
+    stopPlayback()
+    setAiState('idle')
+    scheduleListening(beginListeningRef.current, 0)
+  }, [isMuted, scheduleListening, stopPlayback])
+
+  useEffect(() => {
+    return () => {
+      resetVoiceRuntime(true)
+    }
+  }, [resetVoiceRuntime])
+
+  const voiceControlLabel = !hasConversationStarted
+    ? 'Start'
+    : isLoopPaused
+      ? 'Resume'
+      : aiState === 'listening'
+        ? 'Listening'
+        : aiState === 'thinking'
+          ? 'Thinking'
+          : 'Pause'
+
+  const voiceControlDisabled = aiState === 'thinking'
 
   if (screen === 'active' || screen === 'complete') {
     return (
@@ -773,7 +1327,7 @@ export function AIPracticeScreen({
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => setScreen('dashboard')}
+            onClick={handleReturnToDashboard}
             className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary/80"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -806,12 +1360,17 @@ export function AIPracticeScreen({
             </div>
             <div className="grid grid-cols-3 gap-3">
               <button type="button" onClick={() => setIsMuted(prev => !prev)} className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
-                {isMuted ? <MicOff className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 {isMuted ? 'Unmute' : 'Mute'}
               </button>
-              <button type="button" onClick={handleMicPress} className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-accent px-4 py-3 text-sm font-semibold text-white shadow-lg">
+              <button
+                type="button"
+                onClick={handleVoiceControlPress}
+                disabled={voiceControlDisabled}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-accent px-4 py-3 text-sm font-semibold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
+              >
                 <Mic className="h-4 w-4" />
-                Talk
+                {voiceControlLabel}
               </button>
               <button type="button" onClick={finishSession} className="flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
                 <PhoneOff className="h-4 w-4" />
@@ -844,6 +1403,7 @@ export function AIPracticeScreen({
           <PracticeComplete
             result={result}
             duration={elapsedSeconds}
+            speedStages={speedStageSnapshot ?? profile.speedFramework.stages}
             onClose={() => setScreen('dashboard')}
             onRestart={restartSession}
             returnToCourseLabel={sessionContext?.courseId && sessionContext.roleplayId ? 'Return to reward' : undefined}
