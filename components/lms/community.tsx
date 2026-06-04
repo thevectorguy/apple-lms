@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { User, Discussion, Achievement } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ShareCelebrationCard, type ShareCardData } from './share-celebration-card'
@@ -81,7 +82,7 @@ export function Community({ user, discussions, achievements, posts = [], onDelet
       id: '2',
       author: { name: 'learnerpro', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=learner' },
       type: 'milestone',
-      content: 'Just completed the iPhone 16 Pro course! Ready for the certification exam!',
+      content: 'Just completed the iPhone 16 Pro series! Ready for the certification exam!',
       timestamp: '2h ago',
       likes: 45,
       comments: 8,
@@ -300,9 +301,11 @@ export function Community({ user, discussions, achievements, posts = [], onDelet
                         <MessageCircle className="w-5 h-5" />
                         <span className="text-sm">{post.comments}</span>
                       </button>
-                      <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground ml-auto">
-                        <Share2 className="w-5 h-5" />
-                      </button>
+                      {SHOW_SHARE_UI && (
+                        <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground ml-auto">
+                          <Share2 className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -392,9 +395,11 @@ export function Community({ user, discussions, achievements, posts = [], onDelet
                       <MessageCircle className="w-4 h-4" />
                       <span className="text-sm">{discussion.replies}</span>
                     </button>
-                    <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-                      <Share2 className="w-4 h-4" />
-                    </button>
+                    {SHOW_SHARE_UI && (
+                      <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

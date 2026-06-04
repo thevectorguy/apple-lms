@@ -10,6 +10,7 @@ import type { Course, SkillCategory, SkillUpdateContext, SpeedStageKey, UserSkil
 
 interface AIPracticeScreenProps {
   autoStartFromPlan?: boolean
+  skipDashboard?: boolean
   profile: UserSkillProfile
   courses: Course[]
   onSkillUpdate: (skillCategory: SkillCategory, score: number, context?: SkillUpdateContext) => void
@@ -147,7 +148,7 @@ function getPracticePlan(skill: SkillCategory, courseTitle: string | null, cours
   switch (skill) {
     case 'leadership':
       return {
-        headline: 'Build Leadership with AI Coach',
+        headline: 'Build Leadership with Nova',
         summary: `Leadership is the biggest gap right now. Use this dashboard to pick one difficult management moment, practice it out loud, and turn it into a cleaner next move.${courseTitle ? ` ${reinforcement}` : ''}`,
         objective: 'Leave this round able to run a clearer feedback, delegation, or decision conversation.',
         recommendation: `Start with a feedback or delegation scenario first. That is the fastest way to make leadership feel more concrete in the app and on the floor.${courseTitle ? ` ${reinforcement}` : ''}`,
@@ -193,7 +194,7 @@ function getPracticePlan(skill: SkillCategory, courseTitle: string | null, cours
       }
     case 'compliance':
       return {
-        headline: 'Sharpen Compliance Judgment with AI Coach',
+        headline: 'Sharpen Compliance Judgment with Nova',
         summary: `Compliance needs the most work after leadership, so use this space to rehearse cleaner policy calls, safer language, and stronger judgment in edge cases.${courseTitle ? ` ${reinforcement}` : ''}`,
         objective: 'Leave this round able to explain the safe choice clearly when a situation gets uncomfortable.',
         recommendation: `Start with a gray-area scenario where the safe answer is not the popular one.${courseTitle ? ` ${reinforcement}` : ''}`,
@@ -239,7 +240,7 @@ function getPracticePlan(skill: SkillCategory, courseTitle: string | null, cours
       }
     case 'communication':
       return {
-        headline: 'Tighten Communication with AI Coach',
+        headline: 'Tighten Communication with Nova',
         summary: `Communication is the easiest place to win quickly right now. Use this dashboard to practice clearer questions, stronger objection handling, and more confident closing language.${courseTitle ? ` ${reinforcement}` : ''}`,
         objective: 'Leave this round able to guide the conversation without rambling or losing the thread.',
         recommendation: `Start with the part of the customer conversation where you usually lose control: the first question, the objection, or the close.${courseTitle ? ` ${reinforcement}` : ''}`,
@@ -286,7 +287,7 @@ function getPracticePlan(skill: SkillCategory, courseTitle: string | null, cours
     case 'technical':
     default:
       return {
-        headline: 'Strengthen Technical Selling with AI Coach',
+        headline: 'Strengthen Technical Selling with Nova',
         summary: `Technical selling is the next lever to pull, so use this screen to practice simpler product explanations, stronger comparisons, and more customer-ready answers.${courseTitle ? ` ${reinforcement}` : ''}`,
         objective: 'Leave this round able to explain a product more simply and more confidently.',
         recommendation: `Start with the feature or comparison you hesitate on most, then turn it into customer language.${courseTitle ? ` ${reinforcement}` : ''}`,
@@ -600,6 +601,7 @@ function PracticeComplete({
 
 export function AIPracticeScreen({
   autoStartFromPlan = false,
+  skipDashboard = false,
   profile,
   courses,
   onSkillUpdate,
@@ -647,6 +649,7 @@ export function AIPracticeScreen({
   const [sessionContext, setSessionContext] = useState<SessionContext | null>(null)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const autoStartedRef = useRef<string | null>(null)
+  const autoOpenedScenarioSetupRef = useRef(false)
   const sessionMessagesRef = useRef<SessionMessage[]>([])
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -1221,6 +1224,29 @@ export function AIPracticeScreen({
     setMessages([{ id: 'intro', role: 'ai', content: INTRO_QUESTION }])
   }
 
+  const closePracticePanel = useCallback(() => {
+    setPracticeOpen(false)
+
+    if (skipDashboard) {
+      onBack?.()
+    }
+  }, [onBack, skipDashboard])
+
+  const returnToScenarioSetup = useCallback((initialTopic?: string) => {
+    setScreen('dashboard')
+    openPracticePanel(initialTopic)
+  }, [openPracticePanel])
+
+  useEffect(() => {
+    if (!skipDashboard || screen !== 'dashboard' || practiceOpen || autoOpenedScenarioSetupRef.current) return
+
+    const scenario = profile.nextStepPlan?.type === 'ai_practice' ? profile.nextStepPlan.scenario : undefined
+    if (autoStartFromPlan && scenario) return
+
+    autoOpenedScenarioSetupRef.current = true
+    openPracticePanel(scenario)
+  }, [autoStartFromPlan, openPracticePanel, practiceOpen, profile.nextStepPlan, screen, skipDashboard])
+
   const submitTopic = () => {
     const topic = topicDraft.trim()
     if (!topic) return
@@ -1260,7 +1286,7 @@ export function AIPracticeScreen({
     resetVoiceRuntime(true)
 
     const nextResult = buildPracticeResult(focusSkill)
-    const scenarioLabel = sessionContext?.scenario ?? selectedTopic ?? 'AI Coach Practice'
+    const scenarioLabel = sessionContext?.scenario ?? selectedTopic ?? 'Nova Practice'
     const practiceContext: SkillUpdateContext = {
       sourceId: sessionContext?.roleplayId ?? `guided-ai-${focusSkill}`,
       sourceTitle: scenarioLabel,
@@ -1279,6 +1305,11 @@ export function AIPracticeScreen({
 
   const restartSession = () => {
     if (!selectedTopic) {
+      if (skipDashboard) {
+        returnToScenarioSetup()
+        return
+      }
+
       setScreen('dashboard')
       return
     }
@@ -1288,8 +1319,13 @@ export function AIPracticeScreen({
 
   const handleReturnToDashboard = useCallback(() => {
     resetVoiceRuntime(true)
+    if (skipDashboard) {
+      returnToScenarioSetup(sessionContext?.scenario ?? selectedTopic ?? undefined)
+      return
+    }
+
     setScreen('dashboard')
-  }, [resetVoiceRuntime])
+  }, [resetVoiceRuntime, returnToScenarioSetup, selectedTopic, sessionContext?.scenario, skipDashboard])
 
   useEffect(() => {
     beginListeningRef.current = beginListening
@@ -1331,7 +1367,7 @@ export function AIPracticeScreen({
             className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary/80"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to AI Coach
+            Back to Nova
           </button>
           <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-muted-foreground">
             <Timer className="h-4 w-4 text-primary" />
@@ -1404,7 +1440,14 @@ export function AIPracticeScreen({
             result={result}
             duration={elapsedSeconds}
             speedStages={speedStageSnapshot ?? profile.speedFramework.stages}
-            onClose={() => setScreen('dashboard')}
+            onClose={() => {
+              if (skipDashboard) {
+                returnToScenarioSetup(sessionContext?.scenario ?? selectedTopic ?? undefined)
+                return
+              }
+
+              setScreen('dashboard')
+            }}
             onRestart={restartSession}
             returnToCourseLabel={sessionContext?.courseId && sessionContext.roleplayId ? 'Return to reward' : undefined}
             onReturnToCourse={
@@ -1420,7 +1463,7 @@ export function AIPracticeScreen({
 
   return (
     <div className="space-y-4 px-4 py-4">
-      {onBack && (
+      {!skipDashboard && onBack && (
         <button
           type="button"
           onClick={onBack}
@@ -1431,10 +1474,12 @@ export function AIPracticeScreen({
         </button>
       )}
 
+      {!skipDashboard && (
+        <>
       <div className="overflow-hidden rounded-[30px] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,0.98)_100%)] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(17,24,39,0.98)_100%)]">
         <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Practice with AI Coach</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Practice with Nova</p>
             <h1 className="mt-3 max-w-3xl text-3xl font-black tracking-[-0.03em] text-slate-950 dark:text-white sm:text-4xl">
               {plan.headline}
             </h1>
@@ -1483,8 +1528,8 @@ export function AIPracticeScreen({
               </p>
               <p className="mt-1 text-sm text-white/65">
                 {courseStep
-                  ? `Open the journey path and choose between ${courseStep} or the next activity before you come back here.`
-                  : 'Open the journey path to choose the next episode, game, or checkpoint for this skill.'}
+                  ? `Open the series journey and choose between ${courseStep} or the next activity before you come back here.`
+                  : 'Open the series journey to choose the next episode, game, or checkpoint for this skill.'}
               </p>
             </div>
           </div>
@@ -1579,8 +1624,8 @@ export function AIPracticeScreen({
           </h3>
           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
             {courseStep
-              ? `Use the journey path to choose between ${courseStep} and the next activity so you can refresh the skill before coming back to AI Coach.`
-              : 'Use the journey path to pick the next course activity that reinforces this skill.'}
+              ? `Use the series journey to choose between ${courseStep} and the next activity so you can refresh the skill before coming back to Nova.`
+              : 'Use the series journey to pick the next activity that reinforces this skill.'}
           </p>
           {focusCourse && onOpenCourse && (
             <Button
@@ -1588,7 +1633,7 @@ export function AIPracticeScreen({
               className="mt-5 rounded-full border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08]"
               onClick={() => onOpenCourse(focusCourse.id)}
             >
-              Open journey path
+              Open series journey
             </Button>
           )}
         </section>
@@ -1618,6 +1663,8 @@ export function AIPracticeScreen({
           )}
         </section>
       </div>
+        </>
+      )}
 
       {practiceOpen && (
         <div className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center">
@@ -1625,11 +1672,11 @@ export function AIPracticeScreen({
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-300/80">AI practice</p>
-                <h3 className="mt-1 text-xl font-black">Practice with AI Coach</h3>
+                <h3 className="mt-1 text-xl font-black">Practice with Nova</h3>
               </div>
               <button
                 type="button"
-                onClick={() => setPracticeOpen(false)}
+                onClick={closePracticePanel}
                 className="rounded-full border border-white/10 bg-white/5 p-2 text-white transition hover:bg-white/10"
               >
                 <X className="h-4 w-4" />
@@ -1721,7 +1768,7 @@ export function AIPracticeScreen({
                 <Button
                   variant="outline"
                   className="flex-1 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
-                  onClick={() => setPracticeOpen(false)}
+                  onClick={closePracticePanel}
                 >
                   Save for later
                 </Button>

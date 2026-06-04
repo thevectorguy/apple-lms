@@ -14,16 +14,19 @@ import { AIPracticeScreen } from '@/components/lms/ai-practice-screen'
 import { LeagueJourneyPage } from '@/components/lms/league-journey-page'
 import { MascotOverlay, type MascotTriggerEvent } from '@/components/lms/mascot-overlay'
 import { CelebrationConfetti, type CelebrationBurst } from '@/components/lms/celebration-confetti'
+import { NotificationsPreviewModal } from '@/components/lms/notification-center'
+import { NovaSessionHistoryModal } from '@/components/lms/nova-session-history'
 import { ShareCelebrationCard, type ShareCardData } from '@/components/lms/share-celebration-card'
 import {
-  currentUser, stories, allBadges, discussions, peerChallenges,
+  currentUser, stories, allBadges, discussions, notifications, peerChallenges, practiceSessionHistory,
   sharedAchievements, courses, userSkillProfile,
 } from '@/lib/mock-data'
+import { SHOW_COMMUNITY_TAB, SHOW_SHARE_UI } from '@/lib/feature-flags'
 import { cn } from '@/lib/utils'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
   Bell, Flame, Zap, Sun, Moon, Sparkles, Clock, ChevronRight,
-  Play, Star, TrendingUp, Brain, Trophy, Users, Check, Send, X,
+  Search, Play, Star, TrendingUp, Brain, Trophy, Users, Check, Send, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -144,7 +147,7 @@ function buildNextStep(profile: typeof userSkillProfile) {
   const recommendations = [
     nextStepPlan.status === 'completed'
       ? `Keep building ${primary.skill} to close the remaining gap.`
-      : `Practice with AI Coach to strengthen ${primary.skill}.`,
+      : `Practice with Nova to strengthen ${primary.skill}.`,
     ...entries
       .filter(entry => entry.skill !== primary.skill && entry.gap > 0)
       .slice(0, 2)
@@ -323,7 +326,7 @@ function createGameShareCard(payload: {
     },
     footer: payload.score >= 95
       ? 'Elite round. This one deserves a spotlight in the feed.'
-      : 'Strong checkpoint cleared on the way through the course.',
+      : 'Strong checkpoint cleared on the way through the series.',
   }
 }
 
@@ -362,12 +365,12 @@ function createModuleRewardShareCard(payload: {
   return {
     kind: 'module_reward',
     icon: '🏅',
-    eyebrow: 'Module Reward',
-    achievement: `Level ${payload.module.level} Finisher`,
+    eyebrow: 'Course Reward',
+    achievement: `Course ${payload.module.level} Finisher`,
     title: payload.module.title,
     subtitle: payload.courseTitle,
     primaryStat: {
-      label: 'Level',
+      label: 'Course',
       value: `${payload.module.level}`,
     },
     secondaryStat: {
@@ -379,7 +382,7 @@ function createModuleRewardShareCard(payload: {
 }
 
 function getLeagueHomeFocus(requirement: LeagueRequirementProgress | null) {
-  if (!requirement) return 'Top league'
+  if (!requirement) return 'Top level'
 
   const remaining = Math.max(requirement.target - requirement.value, 0)
 
@@ -405,10 +408,14 @@ function getLeagueHomeFocus(requirement: LeagueRequirementProgress | null) {
 
 function getLeagueHomeCopy(currentTier: LeagueTierState, nextTier: LeagueTierState | null) {
   if (!nextTier) {
-    return `You are in ${currentTier.name} League and already at the top of the ladder.`
+    return `You are in ${currentTier.name} Level and already at the top level.`
   }
 
-  return `You are in ${currentTier.name} League. ${nextTier.name} is next, and a few strong wins will move you closer.`
+  return `You are in ${currentTier.name} Level. ${nextTier.name} Level is next, and a few strong wins will move you closer.`
+}
+
+function getRecommendationLabel(skillCategory: string) {
+  return skillCategory === 'technical' ? 'probing' : skillCategory
 }
 
 function PracticePanel({
@@ -493,7 +500,7 @@ wo        </div>
             {profile.nextStepPlan ? profile.nextStepPlan.title : `Practice ${focusLabel}`}
           </h3>
           <p className="mt-2 text-sm text-white/70">
-            Your profile stays in sync as you move through the course, game checkpoints, and coach practice.
+            Your profile stays in sync as you move through the series, game checkpoints, and coach practice.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/85">
@@ -584,6 +591,7 @@ export default function LMSPage() {
   const [practiceView, setPracticeView] = useState<'landing' | 'ai-coach'>('landing')
   const [aiCoachAutoStartFromPlan, setAiCoachAutoStartFromPlan] = useState(false)
   const [aiCoachKey, setAiCoachKey] = useState(0)
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('')
   const [user, setUser] = useState(currentUser)
   const [isDark, setIsDark] = useState(false)
   const [skillProfile, setSkillProfile] = useState(userSkillProfile)
@@ -591,6 +599,8 @@ export default function LMSPage() {
   const [courseProgressHydrated, setCourseProgressHydrated] = useState(false)
   const [communityPosts, setCommunityPosts] = useState<CommunityFeedPost[]>([])
   const [shareDraft, setShareDraft] = useState<ShareComposerDraft | null>(null)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   // For "Continue Learning" direct play
   const [autoPlayCourseId, setAutoPlayCourseId] = useState<string | null>(null)
   const [openCourseId, setOpenCourseId] = useState<string | null>(null)
@@ -897,7 +907,7 @@ export default function LMSPage() {
     module: Module
     courseTitle: string
   }) => {
-    const starterMessage = `Just closed out Level ${payload.module.level} in ${payload.courseTitle} and unlocked the ${payload.module.title} Finisher reward.`
+    const starterMessage = `Just closed out Course ${payload.module.level} in ${payload.courseTitle} and unlocked the ${payload.module.title} Finisher reward.`
 
     setShareDraft({
       id: `draft-${Date.now()}`,
@@ -908,7 +918,7 @@ export default function LMSPage() {
   }, [])
 
   const handlePostShareDraft = useCallback((message: string) => {
-    if (!shareDraft) return
+    if (!SHOW_COMMUNITY_TAB || !SHOW_SHARE_UI || !shareDraft) return
 
     const nextPost: CommunityFeedPost = {
       id: `score-${Date.now()}`,
@@ -937,6 +947,11 @@ export default function LMSPage() {
   }, [])
 
   const handleTabChange = useCallback((tab: Tab) => {
+    if (tab === 'community' && !SHOW_COMMUNITY_TAB) {
+      setActiveTab('home')
+      return
+    }
+
     // Clear auto-play when user manually navigates
     if (tab !== 'courses') {
       setAutoPlayCourseId(null)
@@ -950,10 +965,15 @@ export default function LMSPage() {
 
   const inProgressCourse = courses.find(c => c.status === 'in_progress')
   const firstName = user.name.split(' ')[0]
+  const unreadNotifications = notifications.filter(notification => notification.unread)
+  const headerSearchPlaceholder = 'Search series'
   const nextEpisode = inProgressCourse?.episodes.find(episode => !episode.completed && !episode.locked) ?? null
   const progressEpisodes = inProgressCourse?.episodes.filter(episode => episode.completed).length ?? 0
   const courseProgressPercent = inProgressCourse ? (progressEpisodes / inProgressCourse.episodes.length) * 100 : 0
   const unlockedBadges = user.badges.filter(badge => !badge.locked)
+  const profileBadges = allBadges.filter((badge) => (
+    !badge.locked || badge.name === 'Sales Champion' || badge.name === 'Speed Learner'
+  ))
   const recommendationCards = skillProfile.weakAreas
     .slice(0, 2)
     .map(area => courses.find(course => course.skillCategory === area && course.status !== 'completed'))
@@ -971,7 +991,12 @@ export default function LMSPage() {
     {
       label: 'Readiness',
       value: `${skillProfile.readinessScore}%`,
-      helper: skillProfile.weakAreas[0] ? `Boost ${skillProfile.weakAreas[0]}` : 'All core skills on track',
+      helper: (
+        <>
+          <span className="hidden sm:inline">Boost Plan to Probe</span>
+          <span className="sm:hidden">Boost Probing</span>
+        </>
+      ),
       icon: Sparkles,
       tint: 'text-sky-500',
       glow: 'from-sky-300/65 via-blue-200/35 to-transparent dark:from-sky-300/22 dark:via-blue-400/10',
@@ -1129,6 +1154,23 @@ export default function LMSPage() {
       ? 'radial-gradient(circle at 12% 20%, rgba(56,189,248,0.12), transparent 28%), radial-gradient(circle at 84% 14%, rgba(148,163,184,0.12), transparent 24%), linear-gradient(180deg, rgba(22,29,44,0.18) 0%, rgba(7,11,20,0.04) 100%), var(--glass-bg)'
       : 'radial-gradient(circle at 12% 20%, rgba(125,211,252,0.2), transparent 26%), radial-gradient(circle at 84% 14%, rgba(196,181,253,0.16), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(236,244,255,0.58) 100%), var(--glass-bg)',
   }
+  const headerSearchStyle = {
+    borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.76)',
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 0% 50%, rgba(125,211,252,0.12), transparent 28%), radial-gradient(circle at 100% 0%, rgba(167,139,250,0.16), transparent 30%), linear-gradient(180deg, rgba(24,32,47,0.86) 0%, rgba(10,14,24,0.74) 100%)'
+      : 'radial-gradient(circle at 0% 50%, rgba(191,219,254,0.86), transparent 28%), radial-gradient(circle at 100% 0%, rgba(221,214,254,0.74), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(234,242,255,0.74) 100%)',
+    boxShadow: isDark
+      ? '0 30px 44px -34px rgba(2,6,23,0.88), inset 0 1px 0 rgba(255,255,255,0.06)'
+      : '0 26px 42px -30px rgba(148,163,184,0.42), inset 0 1px 0 rgba(255,255,255,0.94)',
+  }
+  const headerSearchOrbStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 30% 30%, rgba(125,211,252,0.24), transparent 44%), linear-gradient(180deg, rgba(37,46,61,0.9) 0%, rgba(15,23,42,0.82) 100%)'
+      : 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.98), transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(226,232,240,0.82) 100%)',
+    boxShadow: isDark
+      ? 'inset 0 1px 0 rgba(255,255,255,0.08)'
+      : '0 12px 20px -16px rgba(148,163,184,0.62), inset 0 1px 0 rgba(255,255,255,0.96)',
+  }
   const continueSurfaceStyle = {
     backgroundImage: isDark
       ? 'radial-gradient(circle at 14% 84%, rgba(34,211,238,0.14), transparent 26%), radial-gradient(circle at 82% 12%, rgba(59,130,246,0.12), transparent 22%), linear-gradient(180deg, rgba(15,24,39,0.24) 0%, rgba(6,10,18,0.08) 100%), var(--glass-bg)'
@@ -1232,13 +1274,25 @@ export default function LMSPage() {
       )}
       <CelebrationConfetti burst={celebrationBurst} />
 
-      {shareDraft && (
+      {SHOW_SHARE_UI && shareDraft && (
         <ShareComposerModal
           draft={shareDraft}
             onClose={() => setShareDraft(null)}
             onPost={handlePostShareDraft}
           />
       )}
+
+      <NotificationsPreviewModal
+        notifications={notifications}
+        open={notificationsOpen}
+        onOpenChange={setNotificationsOpen}
+      />
+
+      <NovaSessionHistoryModal
+        sessions={practiceSessionHistory}
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+      />
 
       {/* Header */}
       <header className="sticky top-0 z-40 px-4 pt-4">
@@ -1251,12 +1305,12 @@ export default function LMSPage() {
           <div className="absolute -left-10 top-0 h-20 w-24 rounded-full bg-sky-200/50 blur-3xl dark:bg-sky-400/10" />
           <div className="absolute right-0 top-0 h-20 w-28 rounded-full bg-white/70 blur-3xl dark:bg-indigo-400/12" />
 
-          <div className="relative flex items-center justify-between gap-3">
+          <div className="relative flex items-center justify-between gap-3 md:flex-row md:items-center md:justify-between">
             <motion.button
               whileHover={subtleHover}
               whileTap={pressDown}
               onClick={() => handleTabChange('profile')}
-              className="flex min-w-0 items-center gap-3 text-left"
+              className="flex min-w-0 flex-1 items-center gap-3 text-left md:justify-self-start"
             >
               <img
                 src={user.avatar || '/placeholder.svg'}
@@ -1269,56 +1323,108 @@ export default function LMSPage() {
                   {firstName}
                 </h1>
                 <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>Level {user.level}</span>
-                  <span className="h-1 w-1 rounded-full bg-foreground/20" />
-                  <span>{currentLeagueTier.name} tier</span>
+                  <span>{currentLeagueTier.name} Level</span>
                 </div>
               </div>
             </motion.button>
 
-            <div className="flex items-center gap-2">
-              <div className="ios-frost hidden rounded-full px-3 py-2 sm:flex sm:items-center sm:gap-2">
-                <Flame className="h-4 w-4 text-amber-500" />
-                <div className="leading-none">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Streak</p>
-                  <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{user.streak} days</p>
-                </div>
-              </div>
-
-              <div className="ios-frost hidden rounded-full px-3 py-2 md:flex md:items-center md:gap-2">
-                <Zap className="h-4 w-4 text-primary" />
-                <div className="leading-none">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">XP</p>
-                  <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{user.xp.toLocaleString()}</p>
-                </div>
-              </div>
-
-              <motion.button
+            <div className="flex shrink-0 items-center gap-2 md:ml-auto">
+              <motion.form
                 whileHover={subtleHover}
-                whileTap={pressDown}
-                onClick={toggleTheme}
-                className="ios-icon-button flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
-              >
-                {isDark ? <Sun className="h-[1.05rem] w-[1.05rem]" /> : <Moon className="h-[1.05rem] w-[1.05rem]" />}
-              </motion.button>
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const normalizedQuery = headerSearchQuery.trim().toLowerCase()
 
-              <motion.button
-                whileHover={subtleHover}
-                whileTap={pressDown}
-                onClick={() => {
-                  showMascot({
-                    trigger: 'chat',
-                    title: 'Nova is online',
-                    message: 'Ask Nova what to do next, where you are weak, or how to keep the streak alive.',
-                    emotion: 'excited',
-                    openChat: true,
-                  })
+                  if (!normalizedQuery) {
+                    handleTabChange('courses')
+                    return
+                  }
+
+                  if (
+                    normalizedQuery.includes('nova')
+                    || normalizedQuery.includes('coach')
+                    || normalizedQuery.includes('practice')
+                  ) {
+                    showMascot({
+                      trigger: 'chat',
+                      title: 'Nova is online',
+                      message: `Launching help for "${headerSearchQuery.trim()}".`,
+                      emotion: 'excited',
+                      openChat: normalizedQuery.includes('nova'),
+                    })
+                    openAIPracticeCoach()
+                    return
+                  }
+
+                  if (SHOW_COMMUNITY_TAB && (normalizedQuery.includes('community') || normalizedQuery.includes('feed'))) {
+                    handleTabChange('community')
+                    return
+                  }
+
+                  if (normalizedQuery.includes('profile') || normalizedQuery.includes('badge')) {
+                    handleTabChange('profile')
+                    return
+                  }
+
+                  handleTabChange('courses')
                 }}
-                className="ios-icon-button relative flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
+                className="group relative hidden h-14 min-w-0 flex-1 items-center overflow-hidden rounded-[1.7rem] border px-2.5 md:absolute md:left-1/2 md:flex md:w-[34rem] md:max-w-[calc(100%-22rem)] md:-translate-x-1/2 lg:w-[40rem] xl:w-[44rem]"
+                style={headerSearchStyle}
               >
-                <Bell className="h-[1.05rem] w-[1.05rem]" />
-                <span className="absolute right-[0.72rem] top-[0.72rem] h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_0_4px_rgba(255,255,255,0.68)] dark:shadow-[0_0_0_4px_rgba(15,23,42,0.42)]" />
-              </motion.button>
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_50%,rgba(255,255,255,0.55),transparent_30%),radial-gradient(circle_at_82%_0%,rgba(255,255,255,0.38),transparent_24%)] opacity-70 dark:opacity-30" />
+                <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/70 dark:bg-white/10" />
+
+                <div
+                  className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[1.2rem] text-slate-500 transition-colors duration-300 group-focus-within:text-sky-600 dark:text-slate-200 dark:group-focus-within:text-sky-300"
+                  style={headerSearchOrbStyle}
+                >
+                  <Search className="h-[1.05rem] w-[1.05rem]" />
+                </div>
+
+                <div className="relative ml-3 min-w-0 flex-1 pr-2">
+                  <input
+                    value={headerSearchQuery}
+                    onChange={(event) => setHeaderSearchQuery(event.target.value)}
+                    placeholder={headerSearchPlaceholder}
+                    className="h-6 w-full bg-transparent text-[1rem] font-semibold tracking-[-0.035em] text-foreground outline-none placeholder:text-muted-foreground/62"
+                  aria-label="Search series, practice, and guidance"
+                  />
+                </div>
+
+              </motion.form>
+
+              <div className="flex items-center gap-2">
+                <motion.button
+                  whileHover={subtleHover}
+                  whileTap={pressDown}
+                  onClick={() => handleTabChange('courses')}
+                  className="ios-icon-button flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors md:hidden"
+                  aria-label="Open series search"
+                >
+                  <Search className="h-[1.05rem] w-[1.05rem]" />
+                </motion.button>
+                <motion.button
+                  whileHover={subtleHover}
+                  whileTap={pressDown}
+                  onClick={toggleTheme}
+                  className="ios-icon-button flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
+                >
+                  {isDark ? <Sun className="h-[1.05rem] w-[1.05rem]" /> : <Moon className="h-[1.05rem] w-[1.05rem]" />}
+                </motion.button>
+
+                <motion.button
+                  whileHover={subtleHover}
+                  whileTap={pressDown}
+                  onClick={() => setNotificationsOpen(true)}
+                  className="ios-icon-button relative flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
+                  aria-label={`Open notifications. ${unreadNotifications.length} unread`}
+                >
+                  <Bell className="h-[1.05rem] w-[1.05rem]" />
+                  {unreadNotifications.length > 0 && (
+                    <span className="absolute right-[0.72rem] top-[0.72rem] h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_0_4px_rgba(255,255,255,0.68)] dark:shadow-[0_0_0_4px_rgba(15,23,42,0.42)]" />
+                  )}
+                </motion.button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -1371,7 +1477,7 @@ export default function LMSPage() {
                   >
                     <Trophy className="h-4 w-4" style={{ color: currentLeagueTier.theme.highlight }} />
                     <div className="leading-none">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">League</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Level</p>
                       <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{currentLeagueTier.name}</p>
                     </div>
                   </motion.button>
@@ -1479,7 +1585,7 @@ export default function LMSPage() {
                     <div className="mt-4 space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-[0.26em] text-muted-foreground">Course progress</p>
+                          <p className="text-[9px] font-bold uppercase tracking-[0.26em] text-muted-foreground">Series progress</p>
                           <p className="mt-1.5 text-[1.55rem] font-black leading-none tracking-[-0.06em] text-foreground">
                             {progressEpisodes}<span className="text-sm font-semibold text-muted-foreground">/{inProgressCourse.episodes.length} eps</span>
                           </p>
@@ -1501,11 +1607,7 @@ export default function LMSPage() {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{nextEpisode ? nextEpisode.title : 'Course ready to resume'}</span>
-                        </div>
+                      <div className="flex items-center justify-end gap-3">
                         <div className="flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-sm font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.88)] dark:bg-slate-900/82 dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                           <span>{nextEpisode ? `+${nextEpisode.xp} XP` : 'Resume now'}</span>
                           <ChevronRight className="h-4 w-4" />
@@ -1522,10 +1624,10 @@ export default function LMSPage() {
                   className="ios-frost flex min-h-[22rem] items-center justify-center rounded-[2rem] p-5 text-left"
                 >
                   <div className="max-w-sm text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Courses</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Series</p>
                     <h3 className="mt-4 text-3xl font-semibold tracking-[-0.06em] text-foreground">Your next path is ready.</h3>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Jump into the next course and keep the streak moving without losing momentum.
+                      Jump into the next series and keep the streak moving without losing momentum.
                     </p>
                   </div>
                 </motion.button>
@@ -1538,11 +1640,9 @@ export default function LMSPage() {
               <DailyGoals user={user} />
             </motion.div>
 
-            <motion.button
+            <motion.div
               {...getRevealProps(0.2)}
               whileHover={hoverLift}
-              whileTap={pressDown}
-              onClick={openAIPracticeCoach}
               className="ios-shell relative overflow-hidden rounded-[2.15rem] p-4 text-left"
               style={novaSurfaceStyle}
             >
@@ -1556,19 +1656,10 @@ export default function LMSPage() {
                     <Brain className="h-6 w-6 text-violet-500" />
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="ios-frost flex h-11 w-11 items-center justify-center rounded-full" style={novaFrostStyle}>
-                      <div className="flex items-end gap-0.5">
-                        <span className="h-2.5 w-1 rounded-full bg-violet-500/65" />
-                        <span className="h-4 w-1 rounded-full bg-fuchsia-500/75" />
-                        <span className="h-3 w-1 rounded-full bg-sky-500/70" />
-                      </div>
-                    </div>
+                  <div className="flex items-center">
                     <div className="ios-frost rounded-full px-3 py-2 text-right" style={novaFrostStyle}>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current focus</p>
-                      <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
-                        {skillProfile.weakAreas[0] ? skillProfile.weakAreas[0].charAt(0).toUpperCase() + skillProfile.weakAreas[0].slice(1) : 'All skills'}
-                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Focus</p>
+                      <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">Plan to Probe</p>
                     </div>
                   </div>
                 </div>
@@ -1586,31 +1677,46 @@ export default function LMSPage() {
                     <p className="mt-2 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">{skillProfile.readinessScore}<span className="text-xs font-bold text-muted-foreground">%</span></p>
                   </div>
                   <div className="ios-frost rounded-[1.25rem] px-3 py-2.5" style={novaMetricStyle}>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Gap</p>
-                    <p className="mt-2 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">
-                      {skillProfile.weakAreas[0] ? skillProfile.skillGapByCategory[skillProfile.weakAreas[0]] : 0}<span className="text-xs font-bold text-muted-foreground">%</span>
-                    </p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Scenario</p>
+                    <p className="mt-2 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">5<span className="text-xs font-bold text-muted-foreground">/10</span></p>
                   </div>
                   <div className="ios-frost rounded-[1.25rem] px-3 py-2.5" style={novaMetricStyle}>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Signals</p>
-                    <p className="mt-2 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">{skillProfile.competencyHistory.length}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Attempts</p>
+                    <p className="mt-2 text-[1.42rem] font-black leading-none tracking-[-0.055em] text-foreground">1<span className="text-xs font-bold text-muted-foreground">/3</span></p>
                   </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <p className={cn('text-sm font-semibold', isDark ? 'text-violet-200/78' : 'text-violet-950/55')}>+50 XP each session</p>
-                  <div
-                    className={cn('flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold', isDark ? 'text-white' : 'text-violet-900')}
-                    style={isDark
-                      ? { background: 'linear-gradient(180deg, rgba(56,38,86,0.96) 0%, rgba(24,23,43,0.92) 100%)', boxShadow: '0 16px 30px -18px rgba(2,6,23,0.9), inset 0 1px 0 rgba(255,255,255,0.08)' }
-                      : { background: 'rgba(255,255,255,0.62)', backdropFilter: 'blur(14px)', boxShadow: '0 8px 24px -10px rgba(124,58,237,0.28), inset 0 1px 0 rgba(255,255,255,0.9)' }}
-                  >
-                    Start session
-                    <ChevronRight className="h-4 w-4" />
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileTap={pressDown}
+                      type="button"
+                      onClick={() => setHistoryOpen(true)}
+                      className={cn('flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold', isDark ? 'text-white' : 'text-violet-900')}
+                      style={isDark
+                        ? { background: 'linear-gradient(180deg, rgba(44,32,74,0.92) 0%, rgba(24,23,43,0.88) 100%)', boxShadow: '0 14px 28px -18px rgba(2,6,23,0.85), inset 0 1px 0 rgba(255,255,255,0.08)' }
+                        : { background: 'rgba(255,255,255,0.56)', backdropFilter: 'blur(14px)', boxShadow: '0 8px 24px -12px rgba(124,58,237,0.22), inset 0 1px 0 rgba(255,255,255,0.9)' }}
+                    >
+                      Show history
+                      <ChevronRight className="h-4 w-4" />
+                    </motion.button>
+                    <motion.button
+                      whileTap={pressDown}
+                      type="button"
+                      onClick={openAIPracticeCoach}
+                      className={cn('flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold', isDark ? 'text-white' : 'text-violet-900')}
+                      style={isDark
+                        ? { background: 'linear-gradient(180deg, rgba(56,38,86,0.96) 0%, rgba(24,23,43,0.92) 100%)', boxShadow: '0 16px 30px -18px rgba(2,6,23,0.9), inset 0 1px 0 rgba(255,255,255,0.08)' }
+                        : { background: 'rgba(255,255,255,0.62)', backdropFilter: 'blur(14px)', boxShadow: '0 8px 24px -10px rgba(124,58,237,0.28), inset 0 1px 0 rgba(255,255,255,0.9)' }}
+                    >
+                      Start session
+                      <ChevronRight className="h-4 w-4" />
+                    </motion.button>
                   </div>
                 </div>
               </div>
-            </motion.button>
+            </motion.div>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
@@ -1628,11 +1734,11 @@ export default function LMSPage() {
               <div className="absolute left-[46%] top-[55%] h-4 w-4 rounded-full border border-white/10" />
               <div className="absolute right-14 top-[70%] h-3.5 w-3.5 rounded-full border border-white/10" />
 
-              <div className="relative grid gap-5">
+              <div className="relative grid gap-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/88" style={leagueChipStyle}>
                     <Trophy className="h-3.5 w-3.5" style={{ color: currentLeagueTier.theme.highlight }} />
-                    {currentLeagueTier.name}
+                    {currentLeagueTier.name} Level
                   </div>
                   <div className="flex h-24 w-24 items-center justify-center rounded-[1.8rem] border" style={leagueBadgeTileStyle}>
                     <Trophy className="h-9 w-9" style={{ color: currentLeagueTier.theme.text }} />
@@ -1640,13 +1746,10 @@ export default function LMSPage() {
                 </div>
 
                 <div className="max-w-[18.5rem]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/42">
-                    {currentLeagueTier.headline}
-                  </p>
-                  <h3 className="mt-3 text-[2.85rem] font-black uppercase leading-[0.88] tracking-[-0.08em] text-white">
+                  <h3 className="text-[2.85rem] font-black uppercase leading-[0.88] tracking-[-0.08em] text-white">
                     {currentLeagueTier.name}
                     <br />
-                    League
+                    Level
                   </h3>
                   <p className="mt-4 text-[0.98rem] leading-8 text-white/72">
                     {getLeagueHomeCopy(currentLeagueTier, nextLeagueTier)}
@@ -1660,10 +1763,10 @@ export default function LMSPage() {
                   <div className="relative flex items-end justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/42">
-                        {nextLeagueTier ? `On the way to ${nextLeagueTier.name}` : 'Top tier status'}
+                        {nextLeagueTier ? `On the way to ${nextLeagueTier.name} Level` : 'Top level status'}
                       </p>
                       <p className="mt-2 text-[1.6rem] font-black tracking-[-0.06em] text-white">
-                        {nextLeagueTier ? `${nextLeagueTier.progress}% to ${nextLeagueTier.name}` : 'Top tier reached'}
+                        {nextLeagueTier ? `${nextLeagueTier.progress}% to ${nextLeagueTier.name} Level` : 'Top level reached'}
                       </p>
                       <div className="mt-2 flex items-center gap-2 text-sm font-medium text-white/62">
                         <Users className="h-4 w-4" style={{ color: currentLeagueTier.theme.highlight }} />
@@ -1672,7 +1775,7 @@ export default function LMSPage() {
                     </div>
 
                     <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-3 text-sm font-semibold text-slate-950" style={leagueActionStyle}>
-                      See ladder
+                      See levels
                       <ChevronRight className="h-4 w-4" />
                     </div>
                   </div>
@@ -1690,7 +1793,7 @@ export default function LMSPage() {
                   whileHover={subtleHover}
                   whileTap={pressDown}
                   onClick={() => handleTabChange('profile')}
-                  className="flex items-center gap-1 text-sm font-medium text-primary"
+                  className="hidden items-center gap-1 text-sm font-medium text-primary"
                 >
                   View details
                   <ChevronRight className="h-4 w-4" />
@@ -1723,7 +1826,7 @@ export default function LMSPage() {
                 onClick={() => handleTabChange('courses')}
                 className="flex items-center gap-1 text-sm font-medium text-primary"
               >
-                View all courses
+                View all series
                 <ChevronRight className="h-4 w-4" />
               </motion.button>
             </div>
@@ -1751,11 +1854,11 @@ export default function LMSPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Improve {rec.skillCategory}
-                        </span>
-                      </div>
+                          <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Improve {getRecommendationLabel(rec.skillCategory)}
+                          </span>
+                        </div>
                       <h4 className="mt-1 truncate text-base font-semibold tracking-[-0.03em] text-foreground">{rec.title}</h4>
                       <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
@@ -1769,7 +1872,7 @@ export default function LMSPage() {
                   </motion.button>
                 )) : (
                   <div className="ios-frost rounded-[1.55rem] p-4">
-                    <p className="text-sm font-medium text-muted-foreground">No recommendations right now. You&apos;re in a great place to explore new courses.</p>
+                    <p className="text-sm font-medium text-muted-foreground">No recommendations right now. You&apos;re in a great place to explore new series.</p>
                   </div>
                 )}
               </div>
@@ -1798,8 +1901,13 @@ export default function LMSPage() {
                       animate={getRevealProps(0.4 + (index * 0.03)).animate}
                       transition={getRevealProps(0.4 + (index * 0.03)).transition}
                       whileHover={subtleHover}
-                      className="rounded-[1.35rem] border border-white/60 bg-white/55 px-3 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.86)] dark:border-white/10 dark:bg-white/8"
+                      className="relative rounded-[1.35rem] border border-white/60 bg-white/55 px-3 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.86)] dark:border-white/10 dark:bg-white/8"
                     >
+                      {typeof badge.count === 'number' && (
+                        <span className="absolute right-2 top-2 rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-bold text-primary">
+                          {badge.count}x
+                        </span>
+                      )}
                       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[1rem] bg-gradient-to-br from-primary/18 via-white/70 to-accent/20 text-2xl shadow-[0_14px_24px_-18px_rgba(59,130,246,0.35)] dark:from-primary/24 dark:via-white/8 dark:to-accent/18">
                         {badge.icon}
                       </div>
@@ -1822,7 +1930,7 @@ export default function LMSPage() {
                 onClick={() => handleTabChange('courses')}
                 className="text-sm text-primary flex items-center gap-1"
               >
-                All Courses <ChevronRight className="w-4 h-4" />
+                All Series <ChevronRight className="w-4 h-4" />
               </button>
             </div>
             {inProgressCourse && (() => {
@@ -1863,13 +1971,6 @@ export default function LMSPage() {
                     <div className="w-full bg-secondary rounded-full h-1.5 mb-2">
                       <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{ width: `${pct}%` }} />
                     </div>
-                    {nextEp && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground">Next:</span>
-                        <span className="font-medium truncate">{nextEp.title}</span>
-                        <span className="text-primary font-semibold ml-auto flex-shrink-0">+{nextEp.xp} XP</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               )
@@ -1881,10 +1982,10 @@ export default function LMSPage() {
 	            <div className="mb-3 flex items-center justify-between">
 	              <h2 className="flex items-center gap-2 text-lg font-bold">
 	                <Trophy className="w-5 h-5 text-amber-500" />
-	                League Journey
+	                Level Journey
 	              </h2>
 	              <button onClick={() => handleTabChange('leagues')} className="flex items-center gap-1 text-sm text-primary">
-	                See ladder <ChevronRight className="w-4 h-4" />
+	                See levels <ChevronRight className="w-4 h-4" />
 	              </button>
 	            </div>
 
@@ -1903,9 +2004,9 @@ export default function LMSPage() {
 	                <div>
 	                  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]">
 	                    <Trophy className="h-3.5 w-3.5" />
-	                    {currentLeagueTier.name}
+	                    {currentLeagueTier.name} Level
 	                  </div>
-	                  <h3 className="mt-4 text-3xl font-black">{currentLeagueTier.name} League</h3>
+	                  <h3 className="mt-4 text-3xl font-black">{currentLeagueTier.name} Level</h3>
 	                  <p className="mt-2 max-w-2xl text-sm leading-7 text-white/78">
 	                    {getLeagueHomeCopy(currentLeagueTier, nextLeagueTier)}
 	                  </p>
@@ -1918,7 +2019,7 @@ export default function LMSPage() {
 	                  </p>
 	                  <p className="mt-2 text-sm text-white/70">
 	                    {nextLeagueTier
-	                      ? `${nextLeagueTier.progress}% of the way to ${nextLeagueTier.name}.`
+	                      ? `${nextLeagueTier.progress}% of the way to ${nextLeagueTier.name} Level.`
 	                      : 'Champion is already locked in.'}
 	                  </p>
 	                </div>
@@ -1947,7 +2048,7 @@ export default function LMSPage() {
                 <Brain className="w-6 h-6 text-violet-500" />
               </div>
               <div className="flex-1">
-                <h3 className="font-bold">Practice with AI Coach</h3>
+                <h3 className="font-bold">Practice with Nova</h3>
                 <p className="text-sm text-muted-foreground">Roleplay real sales scenarios &amp; improve your skills</p>
                 <div className="flex items-center gap-2 mt-1.5 text-xs">
                   <span className="bg-violet-500/10 text-violet-500 px-2 py-0.5 rounded-full font-semibold">+50 XP / session</span>
@@ -1981,9 +2082,9 @@ export default function LMSPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Improve {area}</span>
-                      </div>
+                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Improve {getRecommendationLabel(area)}</span>
+                        </div>
                       <h4 className="font-semibold text-sm truncate">{rec.title}</h4>
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" /><span>{rec.totalDuration}</span>
@@ -2005,7 +2106,12 @@ export default function LMSPage() {
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {user.badges.filter(b => !b.locked).slice(0, 4).map(badge => (
-                <div key={badge.id} className="flex-shrink-0 w-20 glass-card rounded-xl p-3 flex flex-col items-center gap-1.5">
+                <div key={badge.id} className="relative flex-shrink-0 w-20 glass-card rounded-xl p-3 flex flex-col items-center gap-1.5">
+                  {typeof badge.count === 'number' && (
+                    <span className="absolute right-2 top-2 rounded-full bg-primary/12 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                      {badge.count}x
+                    </span>
+                  )}
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-xl">{badge.icon}</div>
                   <span className="text-[10px] text-center font-medium text-muted-foreground line-clamp-1 w-full">{badge.name}</span>
                 </div>
@@ -2031,9 +2137,9 @@ export default function LMSPage() {
             onLessonComplete={handleLessonComplete}
             onXPGain={handleXPGain}
             onPracticeWithAI={handlePracticeFromCourses}
-            onShareGameScore={handleShareGameScore}
-            onShareAssessmentResult={handleShareAssessmentResult}
-            onShareModuleReward={handleShareModuleReward}
+            onShareGameScore={SHOW_SHARE_UI ? handleShareGameScore : undefined}
+            onShareAssessmentResult={SHOW_SHARE_UI ? handleShareAssessmentResult : undefined}
+            onShareModuleReward={SHOW_SHARE_UI ? handleShareModuleReward : undefined}
             onCelebrate={({ variant, label }) => triggerCelebration(variant, label)}
             onMascotTrigger={showMascot}
           />
@@ -2055,6 +2161,7 @@ export default function LMSPage() {
           <AIPracticeScreen
             key={aiCoachKey}
             autoStartFromPlan={aiCoachAutoStartFromPlan}
+            skipDashboard
             profile={skillProfile}
             courses={courses}
             onSkillUpdate={handleSkillUpdate}
@@ -2075,7 +2182,7 @@ export default function LMSPage() {
       )}
 
       {/* ── Community Tab ── */}
-      {activeTab === 'community' && (
+      {SHOW_COMMUNITY_TAB && activeTab === 'community' && (
         <div className="px-4 py-4">
 	          <Community
 	            user={user}
@@ -2093,7 +2200,7 @@ export default function LMSPage() {
           <ProfileHeader user={user} />
           <section>
             <h3 className="font-bold text-lg mb-4">Skill Analytics</h3>
-            <SkillRadar profile={skillProfile} />
+            <SkillRadar profile={skillProfile} showSkillBreakdown={false} />
           </section>
           <div className="space-y-3">
             <h3 className="font-bold text-lg">Statistics</h3>
@@ -2118,32 +2225,18 @@ export default function LMSPage() {
           </div>
           <div className="space-y-3">
             <h3 className="font-bold text-lg">All Badges</h3>
-            <BadgesGrid badges={allBadges} />
-          </div>
-          {/* Practice CTA from Profile */}
-          <div
-            className="glass-card rounded-2xl p-4 cursor-pointer hover:bg-secondary/30 transition-all flex items-center gap-4"
-            onClick={openAIPracticeCoach}
-          >
-            <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-violet-500" />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-sm">Improve weak areas with AI</p>
-              <p className="text-xs text-muted-foreground">
-                {skillProfile.weakAreas.length > 0
-                  ? `Focus: ${skillProfile.weakAreas.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(', ')}`
-                  : 'All skills on track!'}
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            <BadgesGrid badges={profileBadges} />
           </div>
           <Button variant="outline" className="w-full bg-transparent">Edit Profile</Button>
         </div>
       )}
 
 	      {/* Bottom Navigation */}
-	      <BottomNav activeTab={activeTab === 'leagues' ? 'home' : activeTab} onTabChange={handleTabChange} />
+	      <BottomNav
+          activeTab={activeTab === 'leagues' ? 'home' : activeTab}
+          onTabChange={handleTabChange}
+          showCommunity={SHOW_COMMUNITY_TAB}
+        />
 	      <MascotOverlay
 	        activeTab={activeTab}
 	        userName={user.name.split(' ')[0]}

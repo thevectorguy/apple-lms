@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { MiniGame } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { X, Clock, Trophy, Zap, RotateCcw } from 'lucide-react'
@@ -123,7 +124,7 @@ export function CardFlipGame({ game, onComplete, onShareScore, continueLabel = '
     const percent = Math.round((score / maxScore) * 100)
     const xpEarned = Math.round((percent / 100) * game.xpReward)
     const shouldOfferRetry = percent < LOW_SCORE_THRESHOLD
-    const shouldOfferShare = percent >= HIGH_SCORE_THRESHOLD
+    const canShareScore = SHOW_SHARE_UI && percent >= HIGH_SCORE_THRESHOLD && typeof onShareScore === 'function'
 
     return (
       <div className="fixed inset-0 z-[70] bg-black flex items-center justify-center p-4">
@@ -144,20 +145,20 @@ export function CardFlipGame({ game, onComplete, onShareScore, continueLabel = '
             </p>
           )}
 
-          {shouldOfferShare && (
+          {canShareScore && (
             <p className="text-sm text-muted-foreground">
               Strong finish. Share this card run with the community if you want to flex it.
             </p>
           )}
 
-          <div className={cn('gap-3', shouldOfferRetry !== shouldOfferShare ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
+          <div className={cn('gap-3', shouldOfferRetry !== canShareScore ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
             {shouldOfferRetry && (
-              <Button variant="outline" className={cn('w-full', !shouldOfferShare && 'max-w-[220px]')} onClick={resetGame}>
+              <Button variant="outline" className={cn('w-full', !canShareScore && 'max-w-[220px]')} onClick={resetGame}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Try Again
               </Button>
             )}
-            {shouldOfferShare && (
+            {canShareScore && (
               <Button
                 className={cn(
                   'w-full border border-fuchsia-300/24 bg-[linear-gradient(180deg,rgba(168,85,247,0.24)_0%,rgba(91,33,182,0.34)_100%)] font-semibold text-fuchsia-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(91,33,182,0.22)] hover:bg-[linear-gradient(180deg,rgba(168,85,247,0.32)_0%,rgba(91,33,182,0.42)_100%)]',

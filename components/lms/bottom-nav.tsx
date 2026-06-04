@@ -9,16 +9,17 @@ export type Tab = 'home' | 'courses' | 'leagues' | 'community' | 'profile' | 'pr
 interface BottomNavProps {
   activeTab: Tab
   onTabChange: (tab: Tab) => void
+  showCommunity?: boolean
 }
 
-export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+export function BottomNav({ activeTab, onTabChange, showCommunity = true }: BottomNavProps) {
   const tabs = [
     { id: 'home' as Tab, icon: Home, label: 'Home' },
-    { id: 'courses' as Tab, icon: BookOpen, label: 'Courses' },
+    { id: 'courses' as Tab, icon: BookOpen, label: 'Series' },
     { id: 'practice' as Tab, icon: Brain, label: 'Practice' },
     { id: 'community' as Tab, icon: Users, label: 'Community' },
     { id: 'profile' as Tab, icon: User, label: 'Profile' },
-  ]
+  ].filter(tab => showCommunity || tab.id !== 'community')
 
   return (
     <nav className="fixed bottom-4 left-4 right-4 z-50 safe-area-bottom">
@@ -29,7 +30,10 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         className="ios-shell rounded-[2rem] px-3 pt-1 pb-[calc(0.3rem+env(safe-area-inset-bottom))]"
       >
         <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/65 dark:bg-white/20" />
-        <div className="grid grid-cols-5 gap-1">
+        <div
+          className="grid gap-1"
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
             return (

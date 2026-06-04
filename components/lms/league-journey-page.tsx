@@ -173,18 +173,18 @@ function getTierStatusLabel(tier: LeagueTierState, nextLeague?: League) {
 
 function getHeroCopy(currentTier: LeagueTierState, nextTier: LeagueTierState | null) {
   if (!nextTier) {
-    return `You have reached the top league. Keep the streak alive, keep practicing, and hold the crown.`
+    return `You have reached the top level. Keep the streak alive, keep practicing, and hold the crown.`
   }
 
-  return `You are in ${currentTier.name} League right now. ${nextTier.name} is next, and the smartest climb is to close the few progress gaps still left on the board.`
+  return `You are in ${currentTier.name} Level right now. ${nextTier.name} Level is next, and the smartest climb is to close the few progress gaps still left on the board.`
 }
 
 function getProgressCopy(nextTier: LeagueTierState | null) {
   if (!nextTier) {
-    return 'Everything is unlocked. The ladder is complete.'
+    return 'Everything is unlocked. Every level is complete.'
   }
 
-  return `${nextTier.name} is ${nextTier.progress}% within reach. These are the moves that matter most right now.`
+  return `${nextTier.name} Level is ${nextTier.progress}% within reach. These are the moves that matter most right now.`
 }
 
 function getTopFocusItems(nextTier: LeagueTierState | null, count = 3) {
@@ -274,7 +274,7 @@ function TierBadge({
       }}
     >
       <TierIcon className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
-      <span className="font-semibold">{tier.name}</span>
+      <span className="font-semibold">{tier.name} Level</span>
     </div>
   )
 }
@@ -344,14 +344,14 @@ function LeaguePathPreview({
             className="mt-2 text-[2rem] leading-none text-slate-950 sm:text-3xl dark:text-white"
             style={{ fontFamily: 'var(--font-league-display)' }}
           >
-            From Bronze to Champion
+            From Bronze Level to Champion Level
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 sm:leading-7 dark:text-white/68">
-            Your league path is simple to scan here. The full ladder opens only when you want the deeper breakdown.
+            Your level path is simple to scan here. The full levels view opens only when you want the deeper breakdown.
           </p>
         </div>
         <div className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 dark:bg-white/10 dark:text-white/72">
-          {nextTier ? `${nextTier.name} next` : 'Top league'}
+          {nextTier ? `${nextTier.name} Level next` : 'Top level'}
         </div>
       </div>
 
@@ -435,7 +435,7 @@ function LeaguePathPreview({
                   </div>
 
                   <div className="min-w-[4.75rem] sm:min-w-[5.5rem]">
-                    <p className="text-[13px] font-semibold text-slate-950 sm:text-sm dark:text-white">{tier.name}</p>
+                    <p className="text-[13px] font-semibold text-slate-950 sm:text-sm dark:text-white">{tier.name} Level</p>
                     <p className="mt-1 text-[9px] uppercase tracking-[0.22em] text-slate-500 sm:text-[10px] dark:text-white/45">
                       {getTierStatusLabel(tier, nextTier?.league)}
                     </p>
@@ -539,18 +539,18 @@ function LeagueLadderModal({
 
             <div className="relative z-10 flex items-center justify-between border-b border-white/10 px-5 py-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/45">League ladder</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/45">Level ladder</p>
                 <h2
                   className="mt-2 text-2xl text-white"
                   style={{ fontFamily: 'var(--font-league-display)' }}
                 >
-                  See every league and what it takes to reach it
+                  See every level and what it takes to reach it
                 </h2>
               </div>
               <button
                 onClick={onClose}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/8 transition-colors hover:bg-white/14"
-                aria-label="Close league ladder"
+                aria-label="Close level ladder"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -590,7 +590,7 @@ function LeagueLadderModal({
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-lg font-semibold text-white">{tier.name}</p>
+                                  <p className="text-lg font-semibold text-white">{tier.name} Level</p>
                                   <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
                                     {status}
                                   </span>
@@ -637,7 +637,7 @@ function LeagueLadderModal({
                               ) : (
                                 <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4 text-sm leading-7 text-white/72">
                                   Bronze is where everyone starts. Build your rhythm here, then start stacking enough learning, quizzes,
-                                  practice, and XP to reach Silver.
+                                  practice, and XP to reach Silver Level.
                                 </div>
                               )}
                             </div>
@@ -705,7 +705,7 @@ export function LeagueJourneyPage({
                     className="mt-2 text-4xl text-white sm:text-5xl"
                     style={{ fontFamily: 'var(--font-league-display)' }}
                   >
-                    {currentTier.name} League
+                    {currentTier.name} Level
                   </h1>
                   <p className="mt-3 max-w-xl text-sm leading-7 text-white/78">{getHeroCopy(currentTier, nextTier)}</p>
                 </div>
@@ -731,10 +731,10 @@ export function LeagueJourneyPage({
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
-                      {nextTier ? `On the way to ${nextTier.name}` : 'Top league reached'}
+                      {nextTier ? `On the way to ${nextTier.name} Level` : 'Top level reached'}
                     </p>
                     <h2 className="mt-2 text-2xl font-semibold text-white">
-                      {nextTier ? `${nextTier.progress}% of the climb is already done` : 'You own the whole ladder'}
+                      {nextTier ? `${nextTier.progress}% of the climb is already done` : 'You own every level'}
                     </h2>
                     <p className="mt-2 max-w-xl text-sm leading-7 text-white/68">{getProgressCopy(nextTier)}</p>
                   </div>
@@ -745,7 +745,7 @@ export function LeagueJourneyPage({
                     }}
                     className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_16px_38px_rgba(15,23,42,0.22)] transition-transform duration-300 hover:-translate-y-0.5"
                   >
-                    See full ladder
+                    See full levels
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>

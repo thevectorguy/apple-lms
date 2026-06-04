@@ -1,6 +1,6 @@
 'use client'
 
-import type { User } from '@/lib/types'
+import { getLeague, LEAGUE_INFO, type League, type User } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Flame, Sparkles, Trophy, ChevronRight, Medal } from 'lucide-react'
 
@@ -11,6 +11,13 @@ interface ProfileHeaderProps {
 
 export function ProfileHeader({ user, compact = false }: ProfileHeaderProps) {
   const xpProgress = (user.xp / user.xpToNextLevel) * 100
+  const leagueOrder: League[] = ['bronze', 'silver', 'gold', 'diamond', 'champion']
+  const currentLeague = getLeague(user.xp)
+  const currentLeagueInfo = LEAGUE_INFO[currentLeague]
+  const nextLeague = leagueOrder[Math.min(leagueOrder.indexOf(currentLeague) + 1, leagueOrder.length - 1)]
+  const nextLeagueInfo = LEAGUE_INFO[nextLeague]
+  const currentLevelLabel = `${currentLeagueInfo.name} Level`
+  const nextLevelLabel = `${nextLeagueInfo.name} Level`
 
   if (compact) {
     return (
@@ -22,8 +29,8 @@ export function ProfileHeader({ user, compact = false }: ProfileHeaderProps) {
               alt={user.name}
               className="w-10 h-10 rounded-full object-cover"
             />
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-level text-[10px] font-bold text-white rounded-full flex items-center justify-center">
-              {user.level}
+            <div className="absolute -bottom-1 -right-1 rounded-full bg-level px-2 py-0.5 text-[9px] font-bold text-white shadow-sm">
+              {currentLeagueInfo.name}
             </div>
           </div>
           <div>
@@ -60,7 +67,7 @@ export function ProfileHeader({ user, compact = false }: ProfileHeaderProps) {
             className="w-20 h-20 rounded-full object-cover ring-4 ring-primary/30"
           />
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-level text-white text-sm font-bold px-3 py-0.5 rounded-full">
-            LVL {user.level}
+            {currentLevelLabel}
           </div>
         </div>
         
@@ -86,8 +93,8 @@ export function ProfileHeader({ user, compact = false }: ProfileHeaderProps) {
           {/* XP Progress */}
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-muted-foreground">Level {user.level}</span>
-              <span className="text-muted-foreground">Level {user.level + 1}</span>
+              <span className="text-muted-foreground">{currentLevelLabel}</span>
+              <span className="text-muted-foreground">{nextLevelLabel}</span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div

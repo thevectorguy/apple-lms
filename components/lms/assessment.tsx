@@ -1,17 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { Assessment } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   X,
   Clock,
-  CheckCircle2,
-  XCircle,
   Sparkles,
   Trophy,
-  ArrowRight,
   RotateCcw,
   Share2,
   Target,
@@ -29,19 +27,25 @@ type AssessmentState = 'intro' | 'quiz' | 'result'
 export function AssessmentComponent({ assessment, onComplete, onShareResult, onClose }: AssessmentProps) {
   const [state, setState] = useState<AssessmentState>('intro')
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [answers, setAnswers] = useState<number[]>([])
-  const [showExplanation, setShowExplanation] = useState(false)
   const [timeLeft, setTimeLeft] = useState(assessment.timeLimit)
   const [score, setScore] = useState(0)
   const [shared, setShared] = useState(false)
 
+  function finishQuiz(finalAnswers = answers) {
+    const correctAnswers = finalAnswers.filter(
+      (answer, index) => answer === assessment.questions[index].correctAnswer,
+    ).length
+    const finalScore = Math.round((correctAnswers / assessment.questions.length) * 100)
+    setScore(finalScore)
+    setState('result')
+    onComplete(finalScore >= assessment.passingScore, finalScore)
+  }
+
   const resetAssessment = () => {
     setState('intro')
     setCurrentQuestion(0)
-    setSelectedAnswer(null)
     setAnswers([])
-    setShowExplanation(false)
     setTimeLeft(assessment.timeLimit)
     setScore(0)
     setShared(false)
@@ -74,45 +78,24 @@ export function AssessmentComponent({ assessment, onComplete, onShareResult, onC
     setTimeLeft(assessment.timeLimit)
   }
 
-  const selectAnswer = (index: number) => {
-    if (showExplanation) return
-    setSelectedAnswer(index)
-  }
+  const handleAnswer = (index: number) => {
+    const finalAnswers = [...answers, index]
+    setAnswers(finalAnswers)
 
-  const confirmAnswer = () => {
-    if (selectedAnswer === null) return
-    setShowExplanation(true)
-    setAnswers(prev => [...prev, selectedAnswer])
-  }
-
-  const nextQuestion = () => {
     if (currentQuestion < assessment.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1)
-      setSelectedAnswer(null)
-      setShowExplanation(false)
       return
     }
 
-    finishQuiz()
-  }
-
-  const finishQuiz = () => {
-    const correctAnswers = answers.filter(
-      (answer, index) => answer === assessment.questions[index].correctAnswer,
-    ).length
-    const finalScore = Math.round((correctAnswers / assessment.questions.length) * 100)
-    setScore(finalScore)
-    setState('result')
-    onComplete(finalScore >= assessment.passingScore, finalScore)
+    finishQuiz(finalAnswers)
   }
 
   const question = assessment.questions[currentQuestion]
-  const isCorrect = selectedAnswer === question?.correctAnswer
   const passed = score >= assessment.passingScore
   const correctAnswersCount = answers.filter(
     (answer, index) => answer === assessment.questions[index].correctAnswer,
   ).length
-  const progressPercent = ((currentQuestion + (showExplanation ? 1 : 0)) / assessment.questions.length) * 100
+  const progressPercent = (currentQuestion / assessment.questions.length) * 100
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -241,42 +224,27 @@ export function AssessmentComponent({ assessment, onComplete, onShareResult, onC
                     {question.text}
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-slate-300">
-                    Choose your answer, confirm it, then review the explanation before moving ahead.
+                    Pick the best answer and keep moving.
                   </p>
 
                   <div className="mt-4 space-y-2.5 sm:mt-5 sm:space-y-3">
                     {question.options.map((option, idx) => (
                       <button
                         key={idx}
-                        onClick={() => selectAnswer(idx)}
-                        disabled={showExplanation}
+                        onClick={() => handleAnswer(idx)}
                         className={cn(
                           'w-full rounded-2xl border px-4 py-3.5 text-left text-[15px] font-semibold transition-all md:px-5 md:py-4',
-                          !showExplanation && 'border-white/10 bg-white/5 hover:border-cyan-300/40 hover:bg-cyan-400/10',
-                          selectedAnswer === idx && !showExplanation && 'border-cyan-300/50 bg-cyan-400/12 text-white',
-                          showExplanation && idx === question.correctAnswer && 'border-emerald-400/50 bg-emerald-400/20 text-emerald-50',
-                          showExplanation && selectedAnswer === idx && idx !== question.correctAnswer && 'border-rose-400/50 bg-rose-400/20 text-rose-50',
-                          showExplanation && idx !== question.correctAnswer && selectedAnswer !== idx && 'border-white/10 bg-white/5 text-slate-300 opacity-75',
+                          'border-white/10 bg-white/5 hover:border-cyan-300/40 hover:bg-cyan-400/10',
                         )}
                       >
                         <span className="flex items-center gap-3">
                           <span
                             className={cn(
                               'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
-                              !showExplanation && selectedAnswer === idx && 'bg-cyan-400 text-slate-950',
-                              !showExplanation && selectedAnswer !== idx && 'bg-white/10 text-slate-300',
-                              showExplanation && idx === question.correctAnswer && 'bg-emerald-400/20 text-emerald-100',
-                              showExplanation && selectedAnswer === idx && idx !== question.correctAnswer && 'bg-rose-400/20 text-rose-100',
-                              showExplanation && idx !== question.correctAnswer && selectedAnswer !== idx && 'bg-white/10 text-slate-400',
+                              'bg-white/10 text-slate-300',
                             )}
                           >
-                            {showExplanation && idx === question.correctAnswer ? (
-                              <CheckCircle2 className="h-5 w-5" />
-                            ) : showExplanation && selectedAnswer === idx && idx !== question.correctAnswer ? (
-                              <XCircle className="h-5 w-5" />
-                            ) : (
-                              String.fromCharCode(65 + idx)
-                            )}
+                            {String.fromCharCode(65 + idx)}
                           </span>
                           <span>{option}</span>
                         </span>
@@ -284,58 +252,6 @@ export function AssessmentComponent({ assessment, onComplete, onShareResult, onC
                     ))}
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="sticky bottom-0 mt-3 pb-1">
-              <div className="rounded-[1.4rem] border border-white/10 bg-slate-950/92 p-3 shadow-[0_-10px_40px_rgba(2,6,23,0.38)] backdrop-blur-xl">
-                {showExplanation && (
-                  <div
-                    className={cn(
-                      'mb-3 rounded-[1.2rem] border px-4 py-3',
-                      isCorrect ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-50' : 'border-rose-400/30 bg-rose-400/15 text-rose-50',
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                          isCorrect ? 'bg-emerald-400/25' : 'bg-rose-400/25',
-                        )}
-                      >
-                        {isCorrect ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                      </div>
-                      <div>
-                        <p className="font-bold">{isCorrect ? 'Correct choice' : 'Review this one'}</p>
-                        <p className="mt-1 text-sm opacity-90">{question.explanation}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {!showExplanation ? (
-                  <Button
-                    onClick={confirmAnswer}
-                    disabled={selectedAnswer === null}
-                    className="w-full rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-cyan-400 font-bold text-slate-950 hover:opacity-90 disabled:opacity-50"
-                  >
-                    Confirm Answer
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={nextQuestion}
-                    className="w-full rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-cyan-400 font-bold text-slate-950 hover:opacity-90"
-                  >
-                    {currentQuestion < assessment.questions.length - 1 ? (
-                      <>
-                        Next Question
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </>
-                    ) : (
-                      'See Results'
-                    )}
-                  </Button>
-                )}
               </div>
             </div>
           </div>
@@ -430,7 +346,7 @@ export function AssessmentComponent({ assessment, onComplete, onShareResult, onC
                   </Button>
                 )}
 
-                {passed && onShareResult && (
+                {passed && SHOW_SHARE_UI && onShareResult && (
                   <Button
                     variant="outline"
                     className="flex-1 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"

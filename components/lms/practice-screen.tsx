@@ -103,18 +103,6 @@ const practiceModes = [
     shellClassName: 'bg-[linear-gradient(180deg,#eff6ff_0%,#ecfeff_100%)] dark:bg-[linear-gradient(180deg,rgba(14,116,144,0.22)_0%,rgba(15,23,42,0.92)_100%)]',
     iconClassName: 'bg-[linear-gradient(180deg,#0ea5e9_0%,#2563eb_100%)]',
   },
-  {
-    id: 'pitch' as const,
-    title: 'Pitch Practice',
-    description: 'Record your pitch and get AI-powered feedback',
-    duration: '3-5 min',
-    xp: 75,
-    Icon: Mic,
-    popular: false,
-    badge: 'AI Avatar',
-    shellClassName: 'bg-[linear-gradient(180deg,#fff7ed_0%,#fff1f2_100%)] dark:bg-[linear-gradient(180deg,rgba(194,65,12,0.22)_0%,rgba(67,20,7,0.92)_100%)]',
-    iconClassName: 'bg-[linear-gradient(180deg,#fb923c_0%,#f97316_100%)]',
-  },
 ] as const
 
 const recentSessions = [
@@ -621,13 +609,13 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-2xl font-black text-slate-950 dark:text-white">Practice with AI Coach</h3>
+                  <h3 className="text-2xl font-black text-slate-950 dark:text-white">Practice with Nova</h3>
                   <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600 dark:bg-white/10 dark:text-white/75">
                     Guided
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  Open a concrete coaching dashboard with scenario starters, focused drills, and the next course tie-in for your weakest area.
+                  Open a concrete coaching dashboard with scenario starters, focused drills, and the next series tie-in for your weakest area.
                 </p>
                 <div className="mt-3 flex items-center gap-4 text-sm font-semibold text-slate-700 dark:text-white/80">
                   <span className="inline-flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> Concrete next steps</span>

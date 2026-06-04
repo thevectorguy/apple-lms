@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { MiniGame } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -56,41 +57,7 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, continueLabel = '
   const resultsDescription = displayCopy?.resultsDescription ?? 'You kept the pressure on and banked bonus XP from fast answers.'
   const retryHint = displayCopy?.retryHint ?? 'Run it back once more to sharpen the quick-recall parts before the next lesson.'
 
-  useEffect(() => {
-    if (phase !== 'playing') return
-
-    const interval = window.setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= TICK_MS) {
-          window.clearInterval(interval)
-          handleAnswer(-1)
-          return 0
-        }
-
-        return prev - TICK_MS
-      })
-    }, TICK_MS)
-
-    return () => window.clearInterval(interval)
-  }, [phase, questionIndex])
-
-  const advance = (nextCorrectStreak: number) => {
-    window.setTimeout(() => {
-      if (questionIndex < game.questions.length - 1) {
-        setQuestionIndex(prev => prev + 1)
-        setTimeLeft(QUESTION_TIME_MS)
-        setSelectedAnswer(null)
-        setPhase('playing')
-        setBestStreak(prev => Math.max(prev, nextCorrectStreak))
-        return
-      }
-
-      setBestStreak(prev => Math.max(prev, nextCorrectStreak))
-      setPhase('results')
-    }, 850)
-  }
-
-  const handleAnswer = (answerIndex: number) => {
+  function handleAnswer(answerIndex: number) {
     if (phase !== 'playing') return
 
     const isCorrect = answerIndex === question.correctAnswer
@@ -112,6 +79,40 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, continueLabel = '
 
     setPhase('feedback')
     advance(nextStreak)
+  }
+
+  useEffect(() => {
+    if (phase !== 'playing') return
+
+    const interval = window.setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= TICK_MS) {
+          window.clearInterval(interval)
+          handleAnswer(-1)
+          return 0
+        }
+
+        return prev - TICK_MS
+      })
+    }, TICK_MS)
+
+    return () => window.clearInterval(interval)
+  }, [phase, questionIndex])
+
+  function advance(nextCorrectStreak: number) {
+    window.setTimeout(() => {
+      if (questionIndex < game.questions.length - 1) {
+        setQuestionIndex(prev => prev + 1)
+        setTimeLeft(QUESTION_TIME_MS)
+        setSelectedAnswer(null)
+        setPhase('playing')
+        setBestStreak(prev => Math.max(prev, nextCorrectStreak))
+        return
+      }
+
+      setBestStreak(prev => Math.max(prev, nextCorrectStreak))
+      setPhase('results')
+    }, 850)
   }
 
   const maxScore = game.questions.length * 220
@@ -139,7 +140,7 @@ export function SpeedMcqGame({ game, onComplete, onShareScore, continueLabel = '
   if (phase === 'results') {
     const shouldOfferRetry = accuracy < LOW_SCORE_THRESHOLD
     const shouldOfferShare = accuracy >= HIGH_SCORE_THRESHOLD
-    const canShareScore = shouldOfferShare && typeof onShareScore === 'function'
+    const canShareScore = SHOW_SHARE_UI && shouldOfferShare && typeof onShareScore === 'function'
 
     return (
       <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/90 p-4 md:p-6">

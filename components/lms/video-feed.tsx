@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { Lesson } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Heart, MessageCircle, Share2, Bookmark, Play, Lock, CheckCircle2, Sparkles } from 'lucide-react'
@@ -106,7 +107,7 @@ export function VideoFeed({ lessons, onStartLesson }: VideoFeedProps) {
                 <div className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center mb-3">
                   <Lock className="w-8 h-8 text-white" />
                 </div>
-                <p className="text-white font-medium">Complete previous modules</p>
+                <p className="text-white font-medium">Complete previous courses</p>
                 <p className="text-white/60 text-sm">to unlock this content</p>
               </div>
             ) : lesson.completed ? (
@@ -178,9 +179,11 @@ export function VideoFeed({ lessons, onStartLesson }: VideoFeedProps) {
                 <MessageCircle className="w-6 h-6" />
                 <span className="text-sm font-medium">{lesson.comments}</span>
               </button>
-              <button className="text-muted-foreground hover:text-foreground transition-colors">
-                <Share2 className="w-6 h-6" />
-              </button>
+              {SHOW_SHARE_UI && (
+                <button className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Share2 className="w-6 h-6" />
+                </button>
+              )}
             </div>
             <button
               onClick={() => toggleSave(lesson.id)}
