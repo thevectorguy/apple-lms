@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
   Bell, Flame, Zap, Sun, Moon, Sparkles, Clock, ChevronRight,
-  Play, Star, TrendingUp, Brain, Trophy, Users, Check, Send, X,
+  Search, Play, Star, TrendingUp, Brain, Trophy, Users, Check, Send, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -379,7 +379,7 @@ function createModuleRewardShareCard(payload: {
 }
 
 function getLeagueHomeFocus(requirement: LeagueRequirementProgress | null) {
-  if (!requirement) return 'Top league'
+  if (!requirement) return 'Top level'
 
   const remaining = Math.max(requirement.target - requirement.value, 0)
 
@@ -405,10 +405,10 @@ function getLeagueHomeFocus(requirement: LeagueRequirementProgress | null) {
 
 function getLeagueHomeCopy(currentTier: LeagueTierState, nextTier: LeagueTierState | null) {
   if (!nextTier) {
-    return `You are in ${currentTier.name} League and already at the top of the ladder.`
+    return `You are in ${currentTier.name} Level and already at the top level.`
   }
 
-  return `You are in ${currentTier.name} League. ${nextTier.name} is next, and a few strong wins will move you closer.`
+  return `You are in ${currentTier.name} Level. ${nextTier.name} Level is next, and a few strong wins will move you closer.`
 }
 
 function PracticePanel({
@@ -584,6 +584,7 @@ export default function LMSPage() {
   const [practiceView, setPracticeView] = useState<'landing' | 'ai-coach'>('landing')
   const [aiCoachAutoStartFromPlan, setAiCoachAutoStartFromPlan] = useState(false)
   const [aiCoachKey, setAiCoachKey] = useState(0)
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('')
   const [user, setUser] = useState(currentUser)
   const [isDark, setIsDark] = useState(false)
   const [skillProfile, setSkillProfile] = useState(userSkillProfile)
@@ -950,6 +951,7 @@ export default function LMSPage() {
 
   const inProgressCourse = courses.find(c => c.status === 'in_progress')
   const firstName = user.name.split(' ')[0]
+  const headerSearchPlaceholder = 'Search courses'
   const nextEpisode = inProgressCourse?.episodes.find(episode => !episode.completed && !episode.locked) ?? null
   const progressEpisodes = inProgressCourse?.episodes.filter(episode => episode.completed).length ?? 0
   const courseProgressPercent = inProgressCourse ? (progressEpisodes / inProgressCourse.episodes.length) * 100 : 0
@@ -990,19 +992,25 @@ export default function LMSPage() {
     switch (label) {
       case 'Streak':
         return {
-          borderColor: 'rgba(251,191,36,0.24)',
-          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(251,191,36,0.26), transparent 30%), linear-gradient(180deg, rgba(255,248,228,0.94) 0%, rgba(244,232,211,0.78) 100%)',
+          borderColor: isDark ? 'rgba(251,191,36,0.16)' : 'rgba(251,191,36,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 14% 18%, rgba(251,191,36,0.12), transparent 30%), linear-gradient(180deg, rgba(39,31,22,0.92) 0%, rgba(24,19,14,0.82) 100%)'
+            : 'radial-gradient(circle at 14% 18%, rgba(251,191,36,0.26), transparent 30%), linear-gradient(180deg, rgba(255,248,228,0.94) 0%, rgba(244,232,211,0.78) 100%)',
         }
       case 'Readiness':
         return {
-          borderColor: 'rgba(96,165,250,0.24)',
-          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.32), transparent 30%), linear-gradient(180deg, rgba(235,248,255,0.94) 0%, rgba(214,231,249,0.8) 100%)',
+          borderColor: isDark ? 'rgba(96,165,250,0.16)' : 'rgba(96,165,250,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.14), transparent 30%), linear-gradient(180deg, rgba(21,34,48,0.92) 0%, rgba(14,21,33,0.82) 100%)'
+            : 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.32), transparent 30%), linear-gradient(180deg, rgba(235,248,255,0.94) 0%, rgba(214,231,249,0.8) 100%)',
         }
       case 'XP':
       default:
         return {
-          borderColor: 'rgba(167,139,250,0.24)',
-          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(196,181,253,0.3), transparent 30%), linear-gradient(180deg, rgba(245,243,255,0.94) 0%, rgba(228,228,248,0.8) 100%)',
+          borderColor: isDark ? 'rgba(167,139,250,0.16)' : 'rgba(167,139,250,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 14% 18%, rgba(196,181,253,0.14), transparent 30%), linear-gradient(180deg, rgba(33,28,48,0.92) 0%, rgba(18,19,31,0.82) 100%)'
+            : 'radial-gradient(circle at 14% 18%, rgba(196,181,253,0.3), transparent 30%), linear-gradient(180deg, rgba(245,243,255,0.94) 0%, rgba(228,228,248,0.8) 100%)',
         }
     }
   }
@@ -1010,51 +1018,86 @@ export default function LMSPage() {
     switch (label) {
       case 'Streak':
         return {
-          borderColor: 'rgba(251,191,36,0.18)',
-          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,244,214,0.82) 100%)',
+          borderColor: isDark ? 'rgba(251,191,36,0.14)' : 'rgba(251,191,36,0.18)',
+          backgroundImage: isDark
+            ? 'linear-gradient(180deg, rgba(56,43,25,0.92) 0%, rgba(33,24,16,0.86) 100%)'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,244,214,0.82) 100%)',
         }
       case 'Readiness':
         return {
-          borderColor: 'rgba(96,165,250,0.18)',
-          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(224,244,255,0.82) 100%)',
+          borderColor: isDark ? 'rgba(96,165,250,0.14)' : 'rgba(96,165,250,0.18)',
+          backgroundImage: isDark
+            ? 'linear-gradient(180deg, rgba(24,46,64,0.92) 0%, rgba(16,28,40,0.86) 100%)'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(224,244,255,0.82) 100%)',
         }
       case 'XP':
       default:
         return {
-          borderColor: 'rgba(167,139,250,0.18)',
-          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(239,235,255,0.84) 100%)',
+          borderColor: isDark ? 'rgba(167,139,250,0.14)' : 'rgba(167,139,250,0.18)',
+          backgroundImage: isDark
+            ? 'linear-gradient(180deg, rgba(46,35,66,0.92) 0%, rgba(24,22,38,0.86) 100%)'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(239,235,255,0.84) 100%)',
         }
     }
   }
   const consistencyPillStyle = {
-    background: 'rgba(255,255,255,0.52)',
+    background: isDark ? 'rgba(15,23,42,0.74)' : 'rgba(255,255,255,0.52)',
     backdropFilter: 'blur(12px)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.85)',
+    boxShadow: isDark
+      ? '0 16px 28px -20px rgba(2,6,23,0.78), inset 0 1px 0 rgba(255,255,255,0.08)'
+      : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.85)',
   }
   const heroSurfaceStyle = {
     borderColor: 'rgba(255,255,255,0.72)',
-    backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.34), transparent 28%), radial-gradient(circle at 86% 14%, rgba(253,224,71,0.24), transparent 26%), radial-gradient(circle at 74% 18%, rgba(255,255,255,0.9), transparent 18%), repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 20px), linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(247,244,235,0.82) 42%, rgba(232,239,251,0.8) 100%)',
-    boxShadow: '0 34px 60px -36px rgba(125,146,175,0.42), inset 0 1px 0 rgba(255,255,255,0.92)',
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 14% 18%, rgba(56,189,248,0.14), transparent 28%), radial-gradient(circle at 86% 14%, rgba(99,102,241,0.1), transparent 26%), radial-gradient(circle at 74% 18%, rgba(255,255,255,0.05), transparent 18%), repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 20px), linear-gradient(180deg, rgba(22,29,44,0.9) 0%, rgba(12,16,27,0.82) 42%, rgba(7,10,18,0.78) 100%)'
+      : 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.34), transparent 28%), radial-gradient(circle at 86% 14%, rgba(253,224,71,0.24), transparent 26%), radial-gradient(circle at 74% 18%, rgba(255,255,255,0.9), transparent 18%), repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 20px), linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(247,244,235,0.82) 42%, rgba(232,239,251,0.8) 100%)',
+    boxShadow: isDark
+      ? '0 34px 60px -36px rgba(2,6,23,0.82), inset 0 1px 0 rgba(255,255,255,0.08)'
+      : '0 34px 60px -36px rgba(125,146,175,0.42), inset 0 1px 0 rgba(255,255,255,0.92)',
   }
   const heroLeagueChipStyle = {
     borderColor: `${currentLeagueTier.theme.highlight}24`,
-    backgroundImage: `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 52%), linear-gradient(135deg, rgba(255,255,255,0.88) 0%, ${currentLeagueTier.theme.accentSoft} 100%)`,
+    backgroundImage: isDark
+      ? `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 52%), linear-gradient(135deg, rgba(32,39,54,0.92) 0%, rgba(15,20,32,0.84) 100%)`
+      : `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 52%), linear-gradient(135deg, rgba(255,255,255,0.88) 0%, ${currentLeagueTier.theme.accentSoft} 100%)`,
   }
-  // Practice with Nova — vivid violet/fuchsia liquid glass (LIGHT)
   const novaSurfaceStyle = {
-    background: 'linear-gradient(135deg, rgba(167,139,250,0.62) 0%, rgba(192,132,252,0.48) 45%, rgba(236,72,153,0.32) 75%, rgba(186,230,253,0.38) 100%)',
-    backdropFilter: 'blur(28px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-    boxShadow: '0 32px 64px -28px rgba(124,58,237,0.38), inset 0 1px 0 rgba(255,255,255,0.65)',
+    ...(isDark
+      ? {
+          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundImage: 'radial-gradient(circle at 16% 18%, rgba(168,85,247,0.22), transparent 28%), radial-gradient(circle at 86% 16%, rgba(34,211,238,0.18), transparent 26%), radial-gradient(circle at 50% 100%, rgba(236,72,153,0.14), transparent 34%), repeating-linear-gradient(135deg, rgba(255,255,255,0.028) 0 1px, transparent 1px 18px), linear-gradient(180deg, rgba(46,28,74,0.94) 0%, rgba(14,18,34,0.88) 100%)',
+          boxShadow: '0 34px 60px -36px rgba(15,23,42,0.72), inset 0 1px 0 rgba(255,255,255,0.06)',
+        }
+      : {
+          background: 'linear-gradient(135deg, rgba(167,139,250,0.62) 0%, rgba(192,132,252,0.48) 45%, rgba(236,72,153,0.32) 75%, rgba(186,230,253,0.38) 100%)',
+          backdropFilter: 'blur(28px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+          boxShadow: '0 32px 64px -28px rgba(124,58,237,0.38), inset 0 1px 0 rgba(255,255,255,0.65)',
+        }),
   }
   const novaFrostStyle = {
-    background: 'rgba(255,255,255,0.52)',
-    backdropFilter: 'blur(14px)',
+    ...(isDark
+      ? {
+          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundImage: 'radial-gradient(circle at 100% 0%, rgba(167,139,250,0.16), transparent 52%), linear-gradient(180deg, rgba(63,40,94,0.82) 0%, rgba(18,23,40,0.72) 100%)',
+        }
+      : {
+          background: 'rgba(255,255,255,0.52)',
+          backdropFilter: 'blur(14px)',
+        }),
   }
   const novaMetricStyle = {
-    background: 'rgba(255,255,255,0.42)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)',
+    ...(isDark
+      ? {
+          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundImage: 'radial-gradient(circle at 100% 0%, rgba(34,211,238,0.14), transparent 42%), linear-gradient(180deg, rgba(52,36,78,0.8) 0%, rgba(18,23,40,0.72) 100%)',
+        }
+      : {
+          background: 'rgba(255,255,255,0.42)',
+          backdropFilter: 'blur(14px) saturate(160%)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)',
+        }),
   }
   const leagueSurfaceStyle = {
     borderColor: `${currentLeagueTier.theme.highlight}1f`,
@@ -1088,6 +1131,23 @@ export default function LMSPage() {
       ? 'radial-gradient(circle at 12% 20%, rgba(56,189,248,0.12), transparent 28%), radial-gradient(circle at 84% 14%, rgba(148,163,184,0.12), transparent 24%), linear-gradient(180deg, rgba(22,29,44,0.18) 0%, rgba(7,11,20,0.04) 100%), var(--glass-bg)'
       : 'radial-gradient(circle at 12% 20%, rgba(125,211,252,0.2), transparent 26%), radial-gradient(circle at 84% 14%, rgba(196,181,253,0.16), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(236,244,255,0.58) 100%), var(--glass-bg)',
   }
+  const headerSearchStyle = {
+    borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.76)',
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 0% 50%, rgba(125,211,252,0.12), transparent 28%), radial-gradient(circle at 100% 0%, rgba(167,139,250,0.16), transparent 30%), linear-gradient(180deg, rgba(24,32,47,0.86) 0%, rgba(10,14,24,0.74) 100%)'
+      : 'radial-gradient(circle at 0% 50%, rgba(191,219,254,0.86), transparent 28%), radial-gradient(circle at 100% 0%, rgba(221,214,254,0.74), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(234,242,255,0.74) 100%)',
+    boxShadow: isDark
+      ? '0 30px 44px -34px rgba(2,6,23,0.88), inset 0 1px 0 rgba(255,255,255,0.06)'
+      : '0 26px 42px -30px rgba(148,163,184,0.42), inset 0 1px 0 rgba(255,255,255,0.94)',
+  }
+  const headerSearchOrbStyle = {
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 30% 30%, rgba(125,211,252,0.24), transparent 44%), linear-gradient(180deg, rgba(37,46,61,0.9) 0%, rgba(15,23,42,0.82) 100%)'
+      : 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.98), transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(226,232,240,0.82) 100%)',
+    boxShadow: isDark
+      ? 'inset 0 1px 0 rgba(255,255,255,0.08)'
+      : '0 12px 20px -16px rgba(148,163,184,0.62), inset 0 1px 0 rgba(255,255,255,0.96)',
+  }
   const continueSurfaceStyle = {
     backgroundImage: isDark
       ? 'radial-gradient(circle at 14% 84%, rgba(34,211,238,0.14), transparent 26%), radial-gradient(circle at 82% 12%, rgba(59,130,246,0.12), transparent 22%), linear-gradient(180deg, rgba(15,24,39,0.24) 0%, rgba(6,10,18,0.08) 100%), var(--glass-bg)'
@@ -1109,10 +1169,14 @@ export default function LMSPage() {
       : 'radial-gradient(circle at 12% 18%, rgba(251,191,36,0.16), transparent 24%), radial-gradient(circle at 88% 12%, rgba(99,102,241,0.14), transparent 24%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(244,245,255,0.58) 100%)',
   }
   const consistencySurfaceStyle = {
-    background: 'linear-gradient(135deg, rgba(251,191,36,0.65) 0%, rgba(249,115,22,0.46) 55%, rgba(253,230,138,0.38) 100%)',
+    background: isDark
+      ? 'radial-gradient(circle at 10% 16%, rgba(251,191,36,0.12), transparent 24%), radial-gradient(circle at 86% 18%, rgba(59,130,246,0.1), transparent 22%), linear-gradient(180deg, rgba(24,29,42,0.84) 0%, rgba(12,16,27,0.72) 100%)'
+      : 'linear-gradient(135deg, rgba(251,191,36,0.65) 0%, rgba(249,115,22,0.46) 55%, rgba(253,230,138,0.38) 100%)',
     backdropFilter: 'blur(24px) saturate(180%)',
     WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-    boxShadow: '0 20px 48px -20px rgba(234,88,12,0.38), inset 0 1px 0 rgba(255,255,255,0.60)',
+    boxShadow: isDark
+      ? '0 28px 54px -28px rgba(2,6,23,0.88), inset 0 1px 0 rgba(255,255,255,0.08)'
+      : '0 20px 48px -20px rgba(234,88,12,0.38), inset 0 1px 0 rgba(255,255,255,0.60)',
   }
   const badgeTileStyle = {
     backgroundImage: isDark
@@ -1206,12 +1270,12 @@ export default function LMSPage() {
           <div className="absolute -left-10 top-0 h-20 w-24 rounded-full bg-sky-200/50 blur-3xl dark:bg-sky-400/10" />
           <div className="absolute right-0 top-0 h-20 w-28 rounded-full bg-white/70 blur-3xl dark:bg-indigo-400/12" />
 
-          <div className="relative flex items-center justify-between gap-3">
+          <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <motion.button
               whileHover={subtleHover}
               whileTap={pressDown}
               onClick={() => handleTabChange('profile')}
-              className="flex min-w-0 items-center gap-3 text-left"
+              className="flex min-w-0 items-center gap-3 text-left md:justify-self-start"
             >
               <img
                 src={user.avatar || '/placeholder.svg'}
@@ -1224,56 +1288,104 @@ export default function LMSPage() {
                   {firstName}
                 </h1>
                 <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>Level {user.level}</span>
-                  <span className="h-1 w-1 rounded-full bg-foreground/20" />
-                  <span>{currentLeagueTier.name} tier</span>
+                  <span>{currentLeagueTier.name} Level</span>
                 </div>
               </div>
             </motion.button>
 
-            <div className="flex items-center gap-2">
-              <div className="ios-frost hidden rounded-full px-3 py-2 sm:flex sm:items-center sm:gap-2">
-                <Flame className="h-4 w-4 text-amber-500" />
-                <div className="leading-none">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Streak</p>
-                  <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{user.streak} days</p>
-                </div>
-              </div>
-
-              <div className="ios-frost hidden rounded-full px-3 py-2 md:flex md:items-center md:gap-2">
-                <Zap className="h-4 w-4 text-primary" />
-                <div className="leading-none">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">XP</p>
-                  <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{user.xp.toLocaleString()}</p>
-                </div>
-              </div>
-
-              <motion.button
+            <div className="flex min-w-0 items-center gap-2 md:ml-auto">
+              <motion.form
                 whileHover={subtleHover}
-                whileTap={pressDown}
-                onClick={toggleTheme}
-                className="ios-icon-button flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
-              >
-                {isDark ? <Sun className="h-[1.05rem] w-[1.05rem]" /> : <Moon className="h-[1.05rem] w-[1.05rem]" />}
-              </motion.button>
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const normalizedQuery = headerSearchQuery.trim().toLowerCase()
 
-              <motion.button
-                whileHover={subtleHover}
-                whileTap={pressDown}
-                onClick={() => {
-                  showMascot({
-                    trigger: 'chat',
-                    title: 'Nova is online',
-                    message: 'Ask Nova what to do next, where you are weak, or how to keep the streak alive.',
-                    emotion: 'excited',
-                    openChat: true,
-                  })
+                  if (!normalizedQuery) {
+                    handleTabChange('courses')
+                    return
+                  }
+
+                  if (
+                    normalizedQuery.includes('nova')
+                    || normalizedQuery.includes('coach')
+                    || normalizedQuery.includes('practice')
+                  ) {
+                    showMascot({
+                      trigger: 'chat',
+                      title: 'Nova is online',
+                      message: `Launching help for "${headerSearchQuery.trim()}".`,
+                      emotion: 'excited',
+                      openChat: normalizedQuery.includes('nova'),
+                    })
+                    openAIPracticeCoach()
+                    return
+                  }
+
+                  if (normalizedQuery.includes('community') || normalizedQuery.includes('feed')) {
+                    handleTabChange('community')
+                    return
+                  }
+
+                  if (normalizedQuery.includes('profile') || normalizedQuery.includes('badge')) {
+                    handleTabChange('profile')
+                    return
+                  }
+
+                  handleTabChange('courses')
                 }}
-                className="ios-icon-button relative flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
+                className="group relative flex h-14 min-w-0 flex-1 items-center overflow-hidden rounded-[1.7rem] border px-2.5 md:absolute md:left-1/2 md:w-[34rem] md:max-w-[calc(100%-22rem)] md:-translate-x-1/2 lg:w-[40rem] xl:w-[44rem]"
+                style={headerSearchStyle}
               >
-                <Bell className="h-[1.05rem] w-[1.05rem]" />
-                <span className="absolute right-[0.72rem] top-[0.72rem] h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_0_4px_rgba(255,255,255,0.68)] dark:shadow-[0_0_0_4px_rgba(15,23,42,0.42)]" />
-              </motion.button>
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_50%,rgba(255,255,255,0.55),transparent_30%),radial-gradient(circle_at_82%_0%,rgba(255,255,255,0.38),transparent_24%)] opacity-70 dark:opacity-30" />
+                <div className="absolute inset-x-10 top-0 h-px rounded-full bg-white/70 dark:bg-white/10" />
+
+                <div
+                  className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[1.2rem] text-slate-500 transition-colors duration-300 group-focus-within:text-sky-600 dark:text-slate-200 dark:group-focus-within:text-sky-300"
+                  style={headerSearchOrbStyle}
+                >
+                  <Search className="h-[1.05rem] w-[1.05rem]" />
+                </div>
+
+                <div className="relative ml-3 min-w-0 flex-1 pr-2">
+                  <input
+                    value={headerSearchQuery}
+                    onChange={(event) => setHeaderSearchQuery(event.target.value)}
+                    placeholder={headerSearchPlaceholder}
+                    className="h-6 w-full bg-transparent text-[1rem] font-semibold tracking-[-0.035em] text-foreground outline-none placeholder:text-muted-foreground/62"
+                    aria-label="Search courses, practice, and guidance"
+                  />
+                </div>
+
+              </motion.form>
+
+              <div className="flex items-center gap-2">
+                <motion.button
+                  whileHover={subtleHover}
+                  whileTap={pressDown}
+                  onClick={toggleTheme}
+                  className="ios-icon-button flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
+                >
+                  {isDark ? <Sun className="h-[1.05rem] w-[1.05rem]" /> : <Moon className="h-[1.05rem] w-[1.05rem]" />}
+                </motion.button>
+
+                <motion.button
+                  whileHover={subtleHover}
+                  whileTap={pressDown}
+                  onClick={() => {
+                    showMascot({
+                      trigger: 'chat',
+                      title: 'Nova is online',
+                      message: 'Ask Nova what to do next, where you are weak, or how to keep the streak alive.',
+                      emotion: 'excited',
+                      openChat: true,
+                    })
+                  }}
+                  className="ios-icon-button relative flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors"
+                >
+                  <Bell className="h-[1.05rem] w-[1.05rem]" />
+                  <span className="absolute right-[0.72rem] top-[0.72rem] h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_0_4px_rgba(255,255,255,0.68)] dark:shadow-[0_0_0_4px_rgba(15,23,42,0.42)]" />
+                </motion.button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -1326,7 +1438,7 @@ export default function LMSPage() {
                   >
                     <Trophy className="h-4 w-4" style={{ color: currentLeagueTier.theme.highlight }} />
                     <div className="leading-none">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">League</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Level</p>
                       <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">{currentLeagueTier.name}</p>
                     </div>
                   </motion.button>
@@ -1553,10 +1665,12 @@ export default function LMSPage() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-violet-950/55">+50 XP each session</p>
+                  <p className={cn('text-sm font-semibold', isDark ? 'text-violet-200/78' : 'text-violet-950/55')}>+50 XP each session</p>
                   <div
-                    className="flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold text-violet-900"
-                    style={{ background: 'rgba(255,255,255,0.62)', backdropFilter: 'blur(14px)', boxShadow: '0 8px 24px -10px rgba(124,58,237,0.28), inset 0 1px 0 rgba(255,255,255,0.9)' }}
+                    className={cn('flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold', isDark ? 'text-white' : 'text-violet-900')}
+                    style={isDark
+                      ? { background: 'linear-gradient(180deg, rgba(56,38,86,0.96) 0%, rgba(24,23,43,0.92) 100%)', boxShadow: '0 16px 30px -18px rgba(2,6,23,0.9), inset 0 1px 0 rgba(255,255,255,0.08)' }
+                      : { background: 'rgba(255,255,255,0.62)', backdropFilter: 'blur(14px)', boxShadow: '0 8px 24px -10px rgba(124,58,237,0.28), inset 0 1px 0 rgba(255,255,255,0.9)' }}
                   >
                     Start session
                     <ChevronRight className="h-4 w-4" />
@@ -1581,11 +1695,11 @@ export default function LMSPage() {
               <div className="absolute left-[46%] top-[55%] h-4 w-4 rounded-full border border-white/10" />
               <div className="absolute right-14 top-[70%] h-3.5 w-3.5 rounded-full border border-white/10" />
 
-              <div className="relative grid gap-5">
+              <div className="relative grid gap-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/88" style={leagueChipStyle}>
                     <Trophy className="h-3.5 w-3.5" style={{ color: currentLeagueTier.theme.highlight }} />
-                    {currentLeagueTier.name}
+                    {currentLeagueTier.name} Level
                   </div>
                   <div className="flex h-24 w-24 items-center justify-center rounded-[1.8rem] border" style={leagueBadgeTileStyle}>
                     <Trophy className="h-9 w-9" style={{ color: currentLeagueTier.theme.text }} />
@@ -1593,13 +1707,10 @@ export default function LMSPage() {
                 </div>
 
                 <div className="max-w-[18.5rem]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/42">
-                    {currentLeagueTier.headline}
-                  </p>
-                  <h3 className="mt-3 text-[2.85rem] font-black uppercase leading-[0.88] tracking-[-0.08em] text-white">
+                  <h3 className="text-[2.85rem] font-black uppercase leading-[0.88] tracking-[-0.08em] text-white">
                     {currentLeagueTier.name}
                     <br />
-                    League
+                    Level
                   </h3>
                   <p className="mt-4 text-[0.98rem] leading-8 text-white/72">
                     {getLeagueHomeCopy(currentLeagueTier, nextLeagueTier)}
@@ -1613,10 +1724,10 @@ export default function LMSPage() {
                   <div className="relative flex items-end justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/42">
-                        {nextLeagueTier ? `On the way to ${nextLeagueTier.name}` : 'Top tier status'}
+                        {nextLeagueTier ? `On the way to ${nextLeagueTier.name} Level` : 'Top level status'}
                       </p>
                       <p className="mt-2 text-[1.6rem] font-black tracking-[-0.06em] text-white">
-                        {nextLeagueTier ? `${nextLeagueTier.progress}% to ${nextLeagueTier.name}` : 'Top tier reached'}
+                        {nextLeagueTier ? `${nextLeagueTier.progress}% to ${nextLeagueTier.name} Level` : 'Top level reached'}
                       </p>
                       <div className="mt-2 flex items-center gap-2 text-sm font-medium text-white/62">
                         <Users className="h-4 w-4" style={{ color: currentLeagueTier.theme.highlight }} />
@@ -1625,7 +1736,7 @@ export default function LMSPage() {
                     </div>
 
                     <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-3 text-sm font-semibold text-slate-950" style={leagueActionStyle}>
-                      See ladder
+                      See levels
                       <ChevronRight className="h-4 w-4" />
                     </div>
                   </div>
@@ -1834,10 +1945,10 @@ export default function LMSPage() {
 	            <div className="mb-3 flex items-center justify-between">
 	              <h2 className="flex items-center gap-2 text-lg font-bold">
 	                <Trophy className="w-5 h-5 text-amber-500" />
-	                League Journey
+	                Level Journey
 	              </h2>
 	              <button onClick={() => handleTabChange('leagues')} className="flex items-center gap-1 text-sm text-primary">
-	                See ladder <ChevronRight className="w-4 h-4" />
+	                See levels <ChevronRight className="w-4 h-4" />
 	              </button>
 	            </div>
 
@@ -1856,9 +1967,9 @@ export default function LMSPage() {
 	                <div>
 	                  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]">
 	                    <Trophy className="h-3.5 w-3.5" />
-	                    {currentLeagueTier.name}
+	                    {currentLeagueTier.name} Level
 	                  </div>
-	                  <h3 className="mt-4 text-3xl font-black">{currentLeagueTier.name} League</h3>
+	                  <h3 className="mt-4 text-3xl font-black">{currentLeagueTier.name} Level</h3>
 	                  <p className="mt-2 max-w-2xl text-sm leading-7 text-white/78">
 	                    {getLeagueHomeCopy(currentLeagueTier, nextLeagueTier)}
 	                  </p>
@@ -1871,7 +1982,7 @@ export default function LMSPage() {
 	                  </p>
 	                  <p className="mt-2 text-sm text-white/70">
 	                    {nextLeagueTier
-	                      ? `${nextLeagueTier.progress}% of the way to ${nextLeagueTier.name}.`
+	                      ? `${nextLeagueTier.progress}% of the way to ${nextLeagueTier.name} Level.`
 	                      : 'Champion is already locked in.'}
 	                  </p>
 	                </div>
