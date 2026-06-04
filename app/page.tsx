@@ -990,19 +990,25 @@ export default function LMSPage() {
     switch (label) {
       case 'Streak':
         return {
-          borderColor: 'rgba(251,191,36,0.24)',
-          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(251,191,36,0.26), transparent 30%), linear-gradient(180deg, rgba(255,248,228,0.94) 0%, rgba(244,232,211,0.78) 100%)',
+          borderColor: isDark ? 'rgba(251,191,36,0.16)' : 'rgba(251,191,36,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 14% 18%, rgba(251,191,36,0.12), transparent 30%), linear-gradient(180deg, rgba(39,31,22,0.92) 0%, rgba(24,19,14,0.82) 100%)'
+            : 'radial-gradient(circle at 14% 18%, rgba(251,191,36,0.26), transparent 30%), linear-gradient(180deg, rgba(255,248,228,0.94) 0%, rgba(244,232,211,0.78) 100%)',
         }
       case 'Readiness':
         return {
-          borderColor: 'rgba(96,165,250,0.24)',
-          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.32), transparent 30%), linear-gradient(180deg, rgba(235,248,255,0.94) 0%, rgba(214,231,249,0.8) 100%)',
+          borderColor: isDark ? 'rgba(96,165,250,0.16)' : 'rgba(96,165,250,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.14), transparent 30%), linear-gradient(180deg, rgba(21,34,48,0.92) 0%, rgba(14,21,33,0.82) 100%)'
+            : 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.32), transparent 30%), linear-gradient(180deg, rgba(235,248,255,0.94) 0%, rgba(214,231,249,0.8) 100%)',
         }
       case 'XP':
       default:
         return {
-          borderColor: 'rgba(167,139,250,0.24)',
-          backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(196,181,253,0.3), transparent 30%), linear-gradient(180deg, rgba(245,243,255,0.94) 0%, rgba(228,228,248,0.8) 100%)',
+          borderColor: isDark ? 'rgba(167,139,250,0.16)' : 'rgba(167,139,250,0.24)',
+          backgroundImage: isDark
+            ? 'radial-gradient(circle at 14% 18%, rgba(196,181,253,0.14), transparent 30%), linear-gradient(180deg, rgba(33,28,48,0.92) 0%, rgba(18,19,31,0.82) 100%)'
+            : 'radial-gradient(circle at 14% 18%, rgba(196,181,253,0.3), transparent 30%), linear-gradient(180deg, rgba(245,243,255,0.94) 0%, rgba(228,228,248,0.8) 100%)',
         }
     }
   }
@@ -1010,51 +1016,86 @@ export default function LMSPage() {
     switch (label) {
       case 'Streak':
         return {
-          borderColor: 'rgba(251,191,36,0.18)',
-          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,244,214,0.82) 100%)',
+          borderColor: isDark ? 'rgba(251,191,36,0.14)' : 'rgba(251,191,36,0.18)',
+          backgroundImage: isDark
+            ? 'linear-gradient(180deg, rgba(56,43,25,0.92) 0%, rgba(33,24,16,0.86) 100%)'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,244,214,0.82) 100%)',
         }
       case 'Readiness':
         return {
-          borderColor: 'rgba(96,165,250,0.18)',
-          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(224,244,255,0.82) 100%)',
+          borderColor: isDark ? 'rgba(96,165,250,0.14)' : 'rgba(96,165,250,0.18)',
+          backgroundImage: isDark
+            ? 'linear-gradient(180deg, rgba(24,46,64,0.92) 0%, rgba(16,28,40,0.86) 100%)'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(224,244,255,0.82) 100%)',
         }
       case 'XP':
       default:
         return {
-          borderColor: 'rgba(167,139,250,0.18)',
-          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(239,235,255,0.84) 100%)',
+          borderColor: isDark ? 'rgba(167,139,250,0.14)' : 'rgba(167,139,250,0.18)',
+          backgroundImage: isDark
+            ? 'linear-gradient(180deg, rgba(46,35,66,0.92) 0%, rgba(24,22,38,0.86) 100%)'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(239,235,255,0.84) 100%)',
         }
     }
   }
   const consistencyPillStyle = {
-    background: 'rgba(255,255,255,0.52)',
+    background: isDark ? 'rgba(15,23,42,0.74)' : 'rgba(255,255,255,0.52)',
     backdropFilter: 'blur(12px)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.85)',
+    boxShadow: isDark
+      ? '0 16px 28px -20px rgba(2,6,23,0.78), inset 0 1px 0 rgba(255,255,255,0.08)'
+      : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.85)',
   }
   const heroSurfaceStyle = {
     borderColor: 'rgba(255,255,255,0.72)',
-    backgroundImage: 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.34), transparent 28%), radial-gradient(circle at 86% 14%, rgba(253,224,71,0.24), transparent 26%), radial-gradient(circle at 74% 18%, rgba(255,255,255,0.9), transparent 18%), repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 20px), linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(247,244,235,0.82) 42%, rgba(232,239,251,0.8) 100%)',
-    boxShadow: '0 34px 60px -36px rgba(125,146,175,0.42), inset 0 1px 0 rgba(255,255,255,0.92)',
+    backgroundImage: isDark
+      ? 'radial-gradient(circle at 14% 18%, rgba(56,189,248,0.14), transparent 28%), radial-gradient(circle at 86% 14%, rgba(99,102,241,0.1), transparent 26%), radial-gradient(circle at 74% 18%, rgba(255,255,255,0.05), transparent 18%), repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 20px), linear-gradient(180deg, rgba(22,29,44,0.9) 0%, rgba(12,16,27,0.82) 42%, rgba(7,10,18,0.78) 100%)'
+      : 'radial-gradient(circle at 14% 18%, rgba(125,211,252,0.34), transparent 28%), radial-gradient(circle at 86% 14%, rgba(253,224,71,0.24), transparent 26%), radial-gradient(circle at 74% 18%, rgba(255,255,255,0.9), transparent 18%), repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 20px), linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(247,244,235,0.82) 42%, rgba(232,239,251,0.8) 100%)',
+    boxShadow: isDark
+      ? '0 34px 60px -36px rgba(2,6,23,0.82), inset 0 1px 0 rgba(255,255,255,0.08)'
+      : '0 34px 60px -36px rgba(125,146,175,0.42), inset 0 1px 0 rgba(255,255,255,0.92)',
   }
   const heroLeagueChipStyle = {
     borderColor: `${currentLeagueTier.theme.highlight}24`,
-    backgroundImage: `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 52%), linear-gradient(135deg, rgba(255,255,255,0.88) 0%, ${currentLeagueTier.theme.accentSoft} 100%)`,
+    backgroundImage: isDark
+      ? `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 52%), linear-gradient(135deg, rgba(32,39,54,0.92) 0%, rgba(15,20,32,0.84) 100%)`
+      : `radial-gradient(circle at 100% 0%, ${currentLeagueTier.theme.highlight}18, transparent 52%), linear-gradient(135deg, rgba(255,255,255,0.88) 0%, ${currentLeagueTier.theme.accentSoft} 100%)`,
   }
-  // Practice with Nova — vivid violet/fuchsia liquid glass (LIGHT)
   const novaSurfaceStyle = {
-    background: 'linear-gradient(135deg, rgba(167,139,250,0.62) 0%, rgba(192,132,252,0.48) 45%, rgba(236,72,153,0.32) 75%, rgba(186,230,253,0.38) 100%)',
-    backdropFilter: 'blur(28px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-    boxShadow: '0 32px 64px -28px rgba(124,58,237,0.38), inset 0 1px 0 rgba(255,255,255,0.65)',
+    ...(isDark
+      ? {
+          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundImage: 'radial-gradient(circle at 16% 18%, rgba(168,85,247,0.22), transparent 28%), radial-gradient(circle at 86% 16%, rgba(34,211,238,0.18), transparent 26%), radial-gradient(circle at 50% 100%, rgba(236,72,153,0.14), transparent 34%), repeating-linear-gradient(135deg, rgba(255,255,255,0.028) 0 1px, transparent 1px 18px), linear-gradient(180deg, rgba(46,28,74,0.94) 0%, rgba(14,18,34,0.88) 100%)',
+          boxShadow: '0 34px 60px -36px rgba(15,23,42,0.72), inset 0 1px 0 rgba(255,255,255,0.06)',
+        }
+      : {
+          background: 'linear-gradient(135deg, rgba(167,139,250,0.62) 0%, rgba(192,132,252,0.48) 45%, rgba(236,72,153,0.32) 75%, rgba(186,230,253,0.38) 100%)',
+          backdropFilter: 'blur(28px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+          boxShadow: '0 32px 64px -28px rgba(124,58,237,0.38), inset 0 1px 0 rgba(255,255,255,0.65)',
+        }),
   }
   const novaFrostStyle = {
-    background: 'rgba(255,255,255,0.52)',
-    backdropFilter: 'blur(14px)',
+    ...(isDark
+      ? {
+          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundImage: 'radial-gradient(circle at 100% 0%, rgba(167,139,250,0.16), transparent 52%), linear-gradient(180deg, rgba(63,40,94,0.82) 0%, rgba(18,23,40,0.72) 100%)',
+        }
+      : {
+          background: 'rgba(255,255,255,0.52)',
+          backdropFilter: 'blur(14px)',
+        }),
   }
   const novaMetricStyle = {
-    background: 'rgba(255,255,255,0.42)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)',
+    ...(isDark
+      ? {
+          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundImage: 'radial-gradient(circle at 100% 0%, rgba(34,211,238,0.14), transparent 42%), linear-gradient(180deg, rgba(52,36,78,0.8) 0%, rgba(18,23,40,0.72) 100%)',
+        }
+      : {
+          background: 'rgba(255,255,255,0.42)',
+          backdropFilter: 'blur(14px) saturate(160%)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)',
+        }),
   }
   const leagueSurfaceStyle = {
     borderColor: `${currentLeagueTier.theme.highlight}1f`,
@@ -1109,10 +1150,14 @@ export default function LMSPage() {
       : 'radial-gradient(circle at 12% 18%, rgba(251,191,36,0.16), transparent 24%), radial-gradient(circle at 88% 12%, rgba(99,102,241,0.14), transparent 24%), linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(244,245,255,0.58) 100%)',
   }
   const consistencySurfaceStyle = {
-    background: 'linear-gradient(135deg, rgba(251,191,36,0.65) 0%, rgba(249,115,22,0.46) 55%, rgba(253,230,138,0.38) 100%)',
+    background: isDark
+      ? 'radial-gradient(circle at 10% 16%, rgba(251,191,36,0.12), transparent 24%), radial-gradient(circle at 86% 18%, rgba(59,130,246,0.1), transparent 22%), linear-gradient(180deg, rgba(24,29,42,0.84) 0%, rgba(12,16,27,0.72) 100%)'
+      : 'linear-gradient(135deg, rgba(251,191,36,0.65) 0%, rgba(249,115,22,0.46) 55%, rgba(253,230,138,0.38) 100%)',
     backdropFilter: 'blur(24px) saturate(180%)',
     WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-    boxShadow: '0 20px 48px -20px rgba(234,88,12,0.38), inset 0 1px 0 rgba(255,255,255,0.60)',
+    boxShadow: isDark
+      ? '0 28px 54px -28px rgba(2,6,23,0.88), inset 0 1px 0 rgba(255,255,255,0.08)'
+      : '0 20px 48px -20px rgba(234,88,12,0.38), inset 0 1px 0 rgba(255,255,255,0.60)',
   }
   const badgeTileStyle = {
     backgroundImage: isDark
@@ -1553,10 +1598,12 @@ export default function LMSPage() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-violet-950/55">+50 XP each session</p>
+                  <p className={cn('text-sm font-semibold', isDark ? 'text-violet-200/78' : 'text-violet-950/55')}>+50 XP each session</p>
                   <div
-                    className="flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold text-violet-900"
-                    style={{ background: 'rgba(255,255,255,0.62)', backdropFilter: 'blur(14px)', boxShadow: '0 8px 24px -10px rgba(124,58,237,0.28), inset 0 1px 0 rgba(255,255,255,0.9)' }}
+                    className={cn('flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold', isDark ? 'text-white' : 'text-violet-900')}
+                    style={isDark
+                      ? { background: 'linear-gradient(180deg, rgba(56,38,86,0.96) 0%, rgba(24,23,43,0.92) 100%)', boxShadow: '0 16px 30px -18px rgba(2,6,23,0.9), inset 0 1px 0 rgba(255,255,255,0.08)' }
+                      : { background: 'rgba(255,255,255,0.62)', backdropFilter: 'blur(14px)', boxShadow: '0 8px 24px -10px rgba(124,58,237,0.28), inset 0 1px 0 rgba(255,255,255,0.9)' }}
                   >
                     Start session
                     <ChevronRight className="h-4 w-4" />
