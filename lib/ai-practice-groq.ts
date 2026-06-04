@@ -80,10 +80,11 @@ export async function transcribeAudioBuffer({
   mimeType: string
 }) {
   const form = new FormData()
+  const audioBytes = new Uint8Array([...fileBuffer])
   form.append('model', getTranscriptionModel())
   form.append('prompt', TRANSCRIPTION_PROMPT)
   form.append('response_format', 'verbose_json')
-  form.append('file', new Blob([fileBuffer], { type: mimeType }), fileName)
+  form.append('file', new Blob([audioBytes], { type: mimeType }), fileName)
 
   const response = await groqFetch('/audio/transcriptions', {
     method: 'POST',

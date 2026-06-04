@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { Lesson } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -133,10 +134,12 @@ export function LessonViewer({ lesson, onComplete, onClose }: LessonViewerProps)
             />
             <span className="text-white text-xs">{lesson.likes + (liked ? 1 : 0)}</span>
           </button>
-          <button className="flex flex-col items-center gap-1">
-            <Share2 className="w-8 h-8 text-white" />
-            <span className="text-white text-xs">Share</span>
-          </button>
+          {SHOW_SHARE_UI && (
+            <button className="flex flex-col items-center gap-1">
+              <Share2 className="w-8 h-8 text-white" />
+              <span className="text-white text-xs">Share</span>
+            </button>
+          )}
           <button
             onClick={() => setSaved(!saved)}
             className="flex flex-col items-center gap-1"

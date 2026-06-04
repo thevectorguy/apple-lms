@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { Trainer, Discussion, PeerChallenge, Achievement } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
@@ -272,10 +273,12 @@ export function SocialLearning({ trainers, discussions, challenges, achievements
                           <MessageSquare className="w-4 h-4" />
                           {discussion.replies}
                         </button>
-                        <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-                          <Share2 className="w-4 h-4" />
-                          Share
-                        </button>
+                        {SHOW_SHARE_UI && (
+                          <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+                            <Share2 className="w-4 h-4" />
+                            Share
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -366,10 +369,12 @@ export function SocialLearning({ trainers, discussions, challenges, achievements
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-lg">Shared Achievements</h3>
-            <Button size="sm" variant="outline" className="rounded-full gap-1.5 bg-transparent">
-              <Trophy className="w-4 h-4" />
-              Share Yours
-            </Button>
+            {SHOW_SHARE_UI && (
+              <Button size="sm" variant="outline" className="rounded-full gap-1.5 bg-transparent">
+                <Trophy className="w-4 h-4" />
+                Share Yours
+              </Button>
+            )}
           </div>
 
           <div className="space-y-3">

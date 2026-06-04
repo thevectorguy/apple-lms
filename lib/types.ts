@@ -27,6 +27,7 @@ export interface Badge {
   name: string
   icon: string
   description: string
+  count?: number
   earnedAt?: string
   locked: boolean
 }
@@ -177,6 +178,41 @@ export interface Achievement {
   timestamp: string
   likes: number
   comments: number
+}
+
+export type AppNotificationCategory = 'announcement' | 'course' | 'practice' | 'streak'
+
+export type AppNotificationTone = 'sky' | 'amber' | 'violet' | 'emerald'
+
+export interface AppNotification {
+  id: string
+  title: string
+  message: string
+  timeLabel: string
+  contextLabel: string
+  category: AppNotificationCategory
+  tone: AppNotificationTone
+  unread: boolean
+}
+
+export interface PracticeSessionReport {
+  headline: string
+  summary: string
+  strengths: string[]
+  improvements: string[]
+}
+
+export interface PracticeSessionHistoryEntry {
+  id: string
+  scenarioName: string
+  reportLine: string
+  score: number
+  completedAt: string
+  durationLabel: string
+  focusLabel: string
+  xpEarned: number
+  speedStages: SpeedFrameworkState['stages']
+  report: PracticeSessionReport
 }
 
 export type GameType = 'fruit-ninja' | 'card-flip' | 'speed-mcq'

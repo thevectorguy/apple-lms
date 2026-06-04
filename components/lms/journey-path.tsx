@@ -259,10 +259,10 @@ function buildSegmentPath(from: PositionedNode, to: PositionedNode) {
 function getNodeLabel(node: PositionedNode['node'], course: Course) {
   if (node.type === 'episode') return node.episode.title
   if (node.type === 'game') return node.game.title
-  if (node.type === 'assessment') return 'Module checkpoint'
+  if (node.type === 'assessment') return 'Course checkpoint'
   if (node.type === 'ai-roleplay') return node.title
-  if (node.type === 'module-complete') return `Level ${node.module.level} reward`
-  return course.certificateTitle || 'Course certificate'
+  if (node.type === 'module-complete') return `Course ${node.module.level} reward`
+  return course.certificateTitle || 'Series certificate'
 }
 
 function getNodeReward(node: PositionedNode['node']) {
@@ -390,7 +390,7 @@ export function JourneyPath({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/75">
-                        Module {node.module.level}
+                        Course {node.module.level}
                       </p>
                       <h3 className="mt-1 text-2xl font-black">{node.module.title}</h3>
                     </div>

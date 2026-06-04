@@ -510,7 +510,7 @@ export function CoursesPage({
           onClick={handleCloseCourseDetail}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ChevronLeft className="w-5 h-5" /><span>Back to Courses</span>
+          <ChevronLeft className="w-5 h-5" /><span>Back to Series</span>
         </button>
 
         <div className="glass-card rounded-2xl overflow-hidden">
@@ -641,14 +641,14 @@ export function CoursesPage({
   return (
     <div className="space-y-4">
       <div className="mb-2">
-        <h1 className="text-2xl font-bold">Courses</h1>
+        <h1 className="text-2xl font-bold">Series</h1>
         <p className="text-muted-foreground">Discover your next skill to master</p>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
         <input
-          type="text" placeholder="Search courses..." value={searchQuery}
+          type="text" placeholder="Search series..." value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-12 py-3 glass-card rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
         />

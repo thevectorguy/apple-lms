@@ -59,37 +59,49 @@ interface SpeedChecklistSummaryProps {
   stages: UserSkillProfile['speedFramework']['stages']
   className?: string
   variant?: 'dark' | 'light'
+  embedded?: boolean
 }
 
-export function SpeedChecklistSummary({ stages, className, variant = 'dark' }: SpeedChecklistSummaryProps) {
+export function SpeedChecklistSummary({
+  stages,
+  className,
+  variant = 'dark',
+  embedded = false,
+}: SpeedChecklistSummaryProps) {
   const isLight = variant === 'light'
 
   return (
     <div
       className={cn(
-        'rounded-[24px] border p-4',
-        isLight
-          ? 'border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88)_0%,rgba(248,250,252,0.92)_100%)] shadow-[0_16px_40px_rgba(15,23,42,0.06)]'
-          : 'border-white/10 bg-white/5',
+        embedded
+          ? 'p-0'
+          : 'rounded-[24px] border p-4',
+        !embedded && (
+          isLight
+            ? 'border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88)_0%,rgba(248,250,252,0.92)_100%)] shadow-[0_16px_40px_rgba(15,23,42,0.06)]'
+            : 'border-white/10 bg-white/5'
+        ),
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isLight ? 'text-slate-500' : 'text-white/55')}>SPEED checklist</p>
-          <p className={cn('mt-1 text-sm font-medium', isLight ? 'text-slate-600' : 'text-white/72')}>These are the live conversation values that also feed the profile view.</p>
+      {!embedded && (
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isLight ? 'text-slate-500' : 'text-white/55')}>SPEED checklist</p>
+            <p className={cn('mt-1 text-sm font-medium', isLight ? 'text-slate-600' : 'text-white/72')}>These are the live conversation values that also feed the profile view.</p>
+          </div>
+          <div
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-semibold',
+              isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/8 text-white/80',
+            )}
+          >
+            {SPEED_STAGE_META.filter(stage => (stages[stage.key]?.score ?? 0) >= SPEED_CHECK_THRESHOLD).length}/5 strong
+          </div>
         </div>
-        <div
-          className={cn(
-            'rounded-full px-3 py-1 text-xs font-semibold',
-            isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/8 text-white/80',
-          )}
-        >
-          {SPEED_STAGE_META.filter(stage => (stages[stage.key]?.score ?? 0) >= SPEED_CHECK_THRESHOLD).length}/5 strong
-        </div>
-      </div>
+      )}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className={cn('grid gap-3 sm:grid-cols-2', !embedded && 'mt-4')}>
         {SPEED_STAGE_META.map(stage => {
           const score = stages[stage.key]?.score ?? 0
           const StageIcon = stage.icon

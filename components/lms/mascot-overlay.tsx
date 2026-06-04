@@ -1414,7 +1414,7 @@ export function MascotOverlay({
                       >
                         <p className="inline-flex items-center gap-2 rounded-full border border-sky-200/80 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700 shadow-[0_10px_24px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-white/[0.05] dark:text-white/55">
                           <Sparkles className="h-3.5 w-3.5" />
-                          Coach Chat
+                          Assistant Chat
                         </p>
                         <h3 className="mt-4 text-[2rem] font-black leading-[0.98] tracking-[-0.05em] text-slate-950 sm:text-[2.2rem] dark:text-white">
                           Ask Nova anything about the current run

@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence, useMotionValue, type PanInfo } from 'framer-motion'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { Episode, Assessment, Course, MiniGame, Module } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import {
   Heart, MessageCircle, Bookmark, Share2, Play, Pause,
-  CheckCircle2, X, Zap, Flame, ChevronLeft, Target, Clock,
+  X, Zap, ChevronLeft, Target, Clock,
   BookOpen, Star, Award, BrainCircuit, Gamepad2, Layers3, Trophy, Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -40,8 +41,6 @@ interface EpisodeFeedProps {
   completedGames?: Set<string>
   completedAssessments?: Set<string>
   completedRoleplays?: Set<string>
-  userStreak?: number
-  userXP?: number
   initialEpisodeId?: string
   initialAssessmentId?: string
   initialRewardModuleId?: string
@@ -270,7 +269,23 @@ function getFeedLabel(item: FeedItem | undefined, totalEpisodes: number) {
   if (item.type === 'game') return 'Challenge'
   if (item.type === 'assessment') return 'Checkpoint'
   if (item.type === 'roleplay') return 'AI Roleplay'
-  return `Level ${item.module.level} Reward`
+  return `Course ${item.module.level} Reward`
+}
+
+function getFeedIndicatorClasses(item: FeedItem, status: 'current' | 'completed' | 'upcoming') {
+  if (status === 'current') {
+    return 'h-8 bg-white'
+  }
+
+  if (status === 'completed') {
+    return item.type === 'assessment'
+      ? 'h-3 bg-accent/60'
+      : 'h-3 bg-white/40'
+  }
+
+  return item.type === 'assessment'
+    ? 'h-2 bg-accent/60'
+    : 'h-2 bg-white/40'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -290,8 +305,6 @@ export function EpisodeFeed({
   completedGames,
   completedAssessments,
   completedRoleplays,
-  userStreak = 7,
-  userXP = 2450,
   initialEpisodeId,
   initialAssessmentId,
   initialRewardModuleId,
@@ -353,7 +366,7 @@ export function EpisodeFeed({
     if (currentIndex === 0 && currentItem.type === 'episode') {
       triggerMascot(`intro-${course.id}`, {
         trigger: 'intro',
-        title: 'Nova spotted your course run',
+        title: 'Nova spotted your series run',
         message: `I am hovering over ${currentItem.episode.title}. Tap me if you want a louder plan than "just keep going."`,
         emotion: 'waving',
         courseTitle: course.title,
@@ -402,7 +415,7 @@ export function EpisodeFeed({
       triggerMascot(`reward-${currentItem.module.id}`, {
         trigger: 'celebrate',
         title: 'That level landed',
-        message: `Badge energy. Stamp the win, then decide whether you are chaining straight into the next module.`,
+        message: `Badge energy. Stamp the win, then decide whether you are chaining straight into the next course.`,
         emotion: 'celebrating',
         courseTitle: course.title,
         itemTitle: currentItem.module.title,
@@ -490,7 +503,7 @@ export function EpisodeFeed({
   }, [activeGame, goNext, goPrev, onClose, showAssessmentModal])
 
   // Drag end (touch swipe)
-  const handleDragEnd = useCallback((_: any, info: PanInfo) => {
+  const handleDragEnd = useCallback((_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (showAssessmentModal || activeGame) return
     const wantsNext = info.offset.y < -88 || (info.offset.y < 0 && info.velocity.y < -0.45)
     const wantsPrev = info.offset.y > 88 || (info.offset.y > 0 && info.velocity.y > 0.45)
@@ -790,22 +803,6 @@ export function EpisodeFeed({
 		              <p className="text-[10px] text-white/70">{course.instructor.name}</p>
 		            </div>
 		          </div>
-	          <div className="flex items-center gap-2">
-	            <div className={cn(
-	              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm',
-	              rewardItem && 'rounded-[1.2rem] border border-white/16 bg-white/10 px-3.5 py-2 shadow-[0_16px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[0_18px_36px_rgba(0,0,0,0.3)]',
-	            )}>
-	              <Flame className="w-4 h-4 text-orange-500" />
-	              <span className="text-sm font-semibold text-white">{userStreak}</span>
-	            </div>
-	            <div className={cn(
-	              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/40 backdrop-blur-sm',
-	              rewardItem && 'rounded-[1.2rem] border border-white/16 bg-white/10 px-3.5 py-2 shadow-[0_16px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[0_18px_36px_rgba(0,0,0,0.3)]',
-	            )}>
-	              <Zap className="w-3.5 h-3.5 text-primary" />
-	              <span className="text-sm font-semibold text-white">{userXP.toLocaleString()} XP</span>
-	            </div>
-	          </div>
 	        </div>
 
         {/* Episode Counter Pill */}
@@ -818,7 +815,7 @@ export function EpisodeFeed({
 
       {/* ── Right Sidebar Actions ── */}
       {ep && (
-        <div className="absolute right-3 bottom-44 z-30 flex flex-col items-center gap-5">
+        <div className="absolute right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-5">
           <motion.button whileTap={{ scale: 0.9 }} onClick={toggleLike} className="flex flex-col items-center gap-1">
             <Heart className={cn('w-7 h-7 drop-shadow-lg', likedEps.has(ep.id) ? 'text-red-500 fill-red-500' : 'text-white')} />
             <span className="text-xs font-semibold text-white drop-shadow-lg">{fmt(ep.xp)}</span>
@@ -851,33 +848,34 @@ export function EpisodeFeed({
             <Bookmark className={cn('w-7 h-7 drop-shadow-lg', savedEps.has(ep.id) ? 'text-primary fill-primary' : 'text-white')} />
           </motion.button>
 
-          <motion.button whileTap={{ scale: 0.9 }} className="flex flex-col items-center gap-1">
-            <Share2 className="w-7 h-7 text-white drop-shadow-lg" />
-          </motion.button>
-
-          {isCompleted && (
-            <motion.div
-              initial={{ scale: 0 }} animate={{ scale: 1 }}
-              className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center"
-            >
-              <CheckCircle2 className="w-5 h-5 text-white" />
-            </motion.div>
+          {SHOW_SHARE_UI && (
+            <motion.button whileTap={{ scale: 0.9 }} className="flex flex-col items-center gap-1">
+              <Share2 className="w-7 h-7 text-white drop-shadow-lg" />
+            </motion.button>
           )}
+
         </div>
       )}
 
       {/* ── Reel Indicators (right edge) ── */}
       <div className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5">
-        {feedItems.map((item, idx) => (
-          <div
-            key={idx}
-            className={cn(
-              'w-1 rounded-full transition-all duration-300',
-              idx === currentIndex ? 'h-6 bg-white' : 'h-2',
-              item.type === 'assessment' ? 'bg-accent/60' : 'bg-white/40',
-            )}
-          />
-        ))}
+        {feedItems.map((item, idx) => {
+          const status = idx === currentIndex
+            ? 'current'
+            : isFeedItemCompleted(item) || idx < currentIndex
+              ? 'completed'
+              : 'upcoming'
+
+          return (
+            <div
+              key={`${item.type}-${idx}`}
+              className={cn(
+                'w-1 rounded-full transition-all duration-300',
+                getFeedIndicatorClasses(item, status),
+              )}
+            />
+          )
+        })}
       </div>
 
       {/* ── Bottom Content Info ── */}
@@ -903,7 +901,7 @@ export function EpisodeFeed({
           <div className="flex gap-2 mb-3 flex-wrap">
             {currentItem?.type === 'episode' && currentItem.module && (
               <span className="px-2.5 py-1 text-xs font-medium text-white/90 bg-white/10 rounded-full backdrop-blur-sm">
-                Module {currentItem.module.level}
+                Course {currentItem.module.level}
               </span>
             )}
             <span className="px-2.5 py-1 text-xs font-medium text-white/90 bg-white/10 rounded-full backdrop-blur-sm">
@@ -920,7 +918,12 @@ export function EpisodeFeed({
           {/* Progress bar */}
           <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+              className={cn(
+                'h-full rounded-full',
+                isCompleted
+                  ? 'bg-gradient-to-r from-emerald-400 to-green-500'
+                  : 'bg-gradient-to-r from-primary to-accent',
+              )}
               style={{ width: `${progress}%` }}
               transition={{ duration: 0.1 }}
             />
@@ -1065,17 +1068,17 @@ export function EpisodeFeed({
 	              <div>
 	                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:border dark:border-emerald-300/15 dark:bg-emerald-400/12 dark:text-emerald-200">
 	                  <Award className="w-3.5 h-3.5" />
-	                  Module Reward
+	                  Course Reward
 	                </div>
 	                <h2 className="mt-4 text-3xl font-black text-slate-950 dark:text-white">
 	                  {moduleRewardUnlocked
-	                    ? `Module ${rewardItem.module.level} complete`
-	                    : `Module ${rewardItem.module.level} checkpoint`}
+	                    ? `Course ${rewardItem.module.level} complete`
+	                    : `Course ${rewardItem.module.level} checkpoint`}
 	                </h2>
 	                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
 	                  {moduleRewardUnlocked
-	                    ? `You cleared ${rewardItem.module.title} and unlocked a badge for this level.`
-	                    : `You reached the end of ${rewardItem.module.title}. Complete the challenge to fully lock this level in.`}
+	                    ? `You cleared ${rewardItem.module.title} and unlocked a badge for this course.`
+	                    : `You reached the end of ${rewardItem.module.title}. Complete the challenge to fully lock this course in.`}
 	                </p>
 	              </div>
 	
@@ -1092,7 +1095,7 @@ export function EpisodeFeed({
 	                <div>
 	                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Unlocked Badge</p>
 	                  <p className="mt-2 text-2xl font-black">{rewardItem.module.title} Finisher</p>
-	                  <p className="mt-1 text-sm text-slate-300 dark:text-slate-400">Level {rewardItem.module.level} progress stamped to your profile.</p>
+	                  <p className="mt-1 text-sm text-slate-300 dark:text-slate-400">Course {rewardItem.module.level} progress stamped to your profile.</p>
 	                </div>
 	                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/10 dark:bg-cyan-400/10">
 	                  <Sparkles className="w-8 h-8 text-cyan-300" />
@@ -1105,11 +1108,11 @@ export function EpisodeFeed({
 		                className="w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-600 font-bold text-white shadow-[0_14px_30px_rgba(37,99,235,0.28)] hover:opacity-95 dark:from-cyan-400 dark:via-sky-500 dark:to-blue-700"
 		                onClick={goNext}
 		              >
-		                {rewardItem.nextEpisodeId ? 'Continue to Next Module' : 'Finish Course Journey'}
+		                {rewardItem.nextEpisodeId ? 'Continue to Next Course' : 'Finish Series Journey'}
 		              </Button>
 
 		              <div className="grid gap-3 sm:grid-cols-2">
-		                {moduleRewardUnlocked && onModuleRewardShare && (
+		                {SHOW_SHARE_UI && moduleRewardUnlocked && onModuleRewardShare && (
 		                  <Button
 		                    className="rounded-full border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.2)_0%,rgba(255,255,255,0.08)_100%)] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_24px_rgba(15,23,42,0.16)] backdrop-blur-xl transition hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.1)_100%)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.04)_100%)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(0,0,0,0.22)] dark:hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0.05)_100%)]"
 		                    onClick={() => onModuleRewardShare(rewardItem.module)}

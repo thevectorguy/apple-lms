@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SHOW_SHARE_UI } from '@/lib/feature-flags'
 import type { MiniGame } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { X, Heart, Zap, Trophy, RotateCcw } from 'lucide-react'
@@ -130,7 +131,7 @@ export function FruitNinjaGame({ game, onComplete, onShareScore, continueLabel =
     const percent = Math.round((score / maxScore) * 100)
     const xpEarned = Math.round((percent / 100) * game.xpReward)
     const shouldOfferRetry = percent < LOW_SCORE_THRESHOLD
-    const shouldOfferShare = percent >= HIGH_SCORE_THRESHOLD
+    const canShareScore = SHOW_SHARE_UI && percent >= HIGH_SCORE_THRESHOLD && typeof onShareScore === 'function'
 
     return (
       <div className="fixed inset-0 z-[70] bg-black flex items-center justify-center p-4">
@@ -153,24 +154,24 @@ export function FruitNinjaGame({ game, onComplete, onShareScore, continueLabel =
             </p>
           )}
 
-          {shouldOfferShare && (
+          {canShareScore && (
             <p className="text-sm text-muted-foreground">
               Clean round. Share it to the community before you jump back into the journey.
             </p>
           )}
 
-          <div className={cn('gap-3', shouldOfferRetry !== shouldOfferShare ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
+          <div className={cn('gap-3', shouldOfferRetry !== canShareScore ? 'flex justify-center' : 'grid sm:grid-cols-2')}>
             {shouldOfferRetry && (
               <Button
                 variant="outline"
-                className={cn('w-full', !shouldOfferShare && 'max-w-[220px]')}
+                className={cn('w-full', !canShareScore && 'max-w-[220px]')}
                 onClick={resetGame}
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Try Again
               </Button>
             )}
-            {shouldOfferShare && (
+            {canShareScore && (
               <Button
                 className={cn(
                   'w-full border border-emerald-300/25 bg-[linear-gradient(180deg,rgba(16,185,129,0.24)_0%,rgba(6,95,70,0.34)_100%)] font-semibold text-emerald-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_rgba(6,95,70,0.22)] hover:bg-[linear-gradient(180deg,rgba(16,185,129,0.3)_0%,rgba(6,95,70,0.42)_100%)]',

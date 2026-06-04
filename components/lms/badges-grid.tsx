@@ -29,8 +29,13 @@ export function BadgesGrid({ badges }: BadgesGridProps) {
               <button
                 key={badge.id}
                 onClick={() => setSelectedBadge(badge)}
-                className="flex flex-col items-center p-4 glass-card rounded-2xl hover:scale-105 transition-transform"
+                className="relative flex flex-col items-center p-4 glass-card rounded-2xl hover:scale-105 transition-transform"
               >
+                {typeof badge.count === 'number' && (
+                  <span className="absolute right-2 top-2 rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-bold text-primary">
+                    {badge.count}x
+                  </span>
+                )}
                 <span className="text-4xl mb-2">{badge.icon}</span>
                 <span className="text-xs font-medium text-center leading-tight">{badge.name}</span>
               </button>
@@ -90,6 +95,11 @@ export function BadgesGrid({ badges }: BadgesGridProps) {
 
               <h3 className="text-xl font-bold mb-1">{selectedBadge.name}</h3>
               <p className="text-muted-foreground text-sm mb-4">{selectedBadge.description}</p>
+              {typeof selectedBadge.count === 'number' && !selectedBadge.locked && (
+                <div className="mb-4 rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold text-primary">
+                  Owned {selectedBadge.count}x
+                </div>
+              )}
 
               {selectedBadge.locked ? (
                 <div className="flex items-center gap-2 text-muted-foreground">

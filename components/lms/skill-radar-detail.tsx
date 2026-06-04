@@ -140,7 +140,7 @@ function getEventCopy(type: SkillRadarEventType) {
     case 'mini_game':
       return { label: 'Mini-game', icon: Gamepad2 }
     case 'module_completion':
-      return { label: 'Module complete', icon: Award }
+      return { label: 'Course complete', icon: Award }
     case 'ai_practice':
       return { label: 'AI practice', icon: Sparkles }
   }
@@ -191,7 +191,7 @@ function getGapActionSteps(skill: SkillCategory, nextPlan?: NextStepPlanLike | n
     ? nextPlan.type === 'ai_practice'
       ? `Start ${nextPlan.title} in AI Coach.`
       : nextPlan.type === 'next_module'
-        ? `Open ${nextPlan.title} and finish the next lesson in that module.`
+        ? `Open ${nextPlan.title} and finish the next lesson in that course.`
         : `Go to ${nextPlan.title} and complete the first unfinished lesson.`
     : `Open the next ${getSkillLabel(skill).toLowerCase()} activity in your learning path.`
 
@@ -205,7 +205,7 @@ function getGapActionSteps(skill: SkillCategory, nextPlan?: NextStepPlanLike | n
     case 'leadership':
       return [
         firstStep,
-        'Complete one leadership module focused on coaching, delegation, or decision-making.',
+        'Complete one leadership course focused on coaching, delegation, or decision-making.',
         'Use AI Coach to rehearse a manager-style conversation and then clear the next checkpoint.',
       ]
     case 'compliance':
