@@ -28,7 +28,7 @@ export const currentUser: User = {
   dailyGoalsStreakClaimed: false,
   totalLessonsCompleted: 45,
   badges: [
-    { id: '1', name: 'First Steps', icon: '🎯', description: 'Complete your first lesson', locked: false, earnedAt: '2024-01-15' },
+    { id: '1', name: 'Speed Learner', icon: '⚡', description: 'Complete 5 lessons in one day', locked: false, earnedAt: '2024-01-15' },
     { id: '2', name: 'Week Warrior', icon: '🔥', description: '7 day streak', count: 3, locked: false, earnedAt: '2024-01-20' },
     { id: '3', name: 'iPhone Pro Course', icon: '📱', description: 'Master iPhone knowledge', locked: false, earnedAt: '2024-01-25' },
     { id: '4', name: 'Mac Expert', icon: '💻', description: 'Complete Mac training', locked: true },
@@ -231,7 +231,7 @@ export const practiceSessionHistory: PracticeSessionHistoryEntry[] = [
     score: 83,
     completedAt: 'May 29, 2:05 PM',
     durationLabel: '4 min',
-    focusLabel: 'Technical',
+    focusLabel: 'Plan to Probe',
     xpEarned: 60,
     speedStages: {
       start_right: { score: 79, sourceTitle: 'Apple Watch fitness comparison' },
@@ -390,13 +390,12 @@ export const leaderboard: LeaderboardEntry[] = [
 ]
 
 export const allBadges: Badge[] = [
-  { id: '1', name: 'First Steps', icon: '🎯', description: 'Complete your first lesson', locked: false },
+  { id: '1', name: 'Speed Learner', icon: '⚡', description: 'Complete 5 lessons in one day', locked: false },
   { id: '2', name: 'Week Warrior', icon: '🔥', description: 'Maintain a 7-day streak', count: 3, locked: false },
   { id: '3', name: 'iPhone Pro Course', icon: '📱', description: 'Master all iPhone courses', locked: false },
   { id: '4', name: 'Mac Expert', icon: '💻', description: 'Complete Mac training path', locked: true },
   { id: '5', name: 'Sales Champion', icon: '🏆', description: 'Close 10 practice deals', locked: true },
   { id: '6', name: 'Quiz Master', icon: '🧠', description: 'Score 100% on 5 assessments', locked: true },
-  { id: '7', name: 'Speed Learner', icon: '⚡', description: 'Complete 5 lessons in one day', locked: true },
   { id: '8', name: 'Ecosystem Expert', icon: '🌐', description: 'Master all product categories', locked: true },
   { id: '9', name: 'Streak Legend', icon: '💎', description: 'Maintain a 30-day streak', locked: true },
   { id: '10', name: 'Top 10', icon: '🥇', description: 'Reach the Top 10 leaderboard', locked: true },

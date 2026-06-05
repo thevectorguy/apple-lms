@@ -49,6 +49,14 @@ function getSkillLabel(skill: SkillCategory) {
         : 'Compliance'
 }
 
+function getReadinessCardSkillLabel(skill: SkillCategory) {
+  return skill === 'technical' ? 'Plan to Probe' : getSkillLabel(skill)
+}
+
+function getReadinessCardActionLabel(skill: SkillCategory, fallbackTitle: string) {
+  return skill === 'technical' ? 'Strengthen probing' : fallbackTitle
+}
+
 function getWeakestSkill(profile: SkillRadarProfile) {
   return [...skillLabels]
     .map(item => ({ ...item, gap: getSkillGap(profile, item.key), value: profile.radarData?.[item.key] ?? 0 }))
@@ -69,7 +77,7 @@ function getNextStepCopy(profile: SkillRadarProfile) {
       title: action,
       description: plan.title,
       badge: plan.status === 'completed' ? 'Completed' : 'Ready now',
-      skill: plan.skillCategory,
+      skill: getReadinessCardSkillLabel(plan.skillCategory),
     }
   }
 
@@ -358,11 +366,8 @@ export function SkillRadar({
     <>
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => openDetail(weakestSkill)}
-            className="group rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition-transform hover:-translate-y-0.5 dark:border-cyan-950/60 dark:bg-[linear-gradient(180deg,rgba(12,24,42,0.98)_0%,rgba(14,28,48,0.98)_100%)] dark:shadow-[0_16px_40px_rgba(2,6,23,0.36)]"
-            aria-label="Open skill readiness details"
+          <div
+            className="rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-[0_16px_40px_rgba(15,23,42,0.06)] dark:border-cyan-950/60 dark:bg-[linear-gradient(180deg,rgba(12,24,42,0.98)_0%,rgba(14,28,48,0.98)_100%)] dark:shadow-[0_16px_40px_rgba(2,6,23,0.36)]"
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
@@ -371,7 +376,6 @@ export function SkillRadar({
                 </p>
                 <h3 className="mt-1 text-lg font-black text-slate-950">Readiness snapshot</h3>
               </div>
-              <ChevronRight className="h-5 w-5 text-slate-400 transition-transform group-hover:translate-x-0.5" />
             </div>
 
             <div className="relative mx-auto aspect-square w-full max-w-[260px]">
@@ -451,13 +455,10 @@ export function SkillRadar({
                 </div>
               ))}
             </div>
-          </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => openDetail(weakestSkill)}
-            className="group rounded-2xl border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4 text-left shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition-transform hover:-translate-y-0.5 dark:border-cyan-950/60 dark:bg-[linear-gradient(180deg,rgba(16,29,49,0.98)_0%,rgba(12,23,40,0.98)_100%)] dark:shadow-[0_16px_40px_rgba(2,6,23,0.36)]"
-            aria-label="Open readiness details"
+          <div
+            className="rounded-2xl border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4 text-left shadow-[0_16px_40px_rgba(15,23,42,0.06)] dark:border-cyan-950/60 dark:bg-[linear-gradient(180deg,rgba(16,29,49,0.98)_0%,rgba(12,23,40,0.98)_100%)] dark:shadow-[0_16px_40px_rgba(2,6,23,0.36)]"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -466,7 +467,6 @@ export function SkillRadar({
                 </p>
                 <h3 className="mt-1 text-lg font-black text-slate-950">Current learning fit</h3>
               </div>
-              <ChevronRight className="h-5 w-5 text-slate-400 transition-transform group-hover:translate-x-0.5" />
             </div>
 
             <div className="mt-5 flex items-center gap-4">
@@ -511,7 +511,7 @@ export function SkillRadar({
                   <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/55">
                     Largest gap
                   </p>
-                  <p className="mt-1 text-lg font-black">{getSkillLabel(weakestSkill)}</p>
+                  <p className="mt-1 text-lg font-black">{getReadinessCardSkillLabel(weakestSkill)}</p>
                   <p className="mt-1 text-sm text-white/70">
                     Focused practice here will lift your profile fastest.
                   </p>
@@ -520,7 +520,7 @@ export function SkillRadar({
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/70">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold text-slate-900">{nextStep.title}</p>
+                    <p className="text-sm font-semibold text-slate-900">{getReadinessCardActionLabel(weakestSkill, nextStep.title)}</p>
                   </div>
                   <p className="mt-2 text-sm text-slate-600">{nextStep.description}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -536,7 +536,7 @@ export function SkillRadar({
                 </div>
               </div>
             </div>
-          </button>
+          </div>
         </div>
 
         {showSkillBreakdown && (

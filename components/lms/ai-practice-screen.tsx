@@ -20,12 +20,6 @@ interface AIPracticeScreenProps {
   onBack?: () => void
 }
 
-interface CoachMessage {
-  id: string
-  role: 'ai' | 'user'
-  content: string
-}
-
 interface PracticeCard {
   title: string
   detail: string
@@ -80,8 +74,6 @@ const PRACTICE_COACH = {
   xp: 60,
 } as const
 
-const INTRO_QUESTION = 'What would you like to work on today?'
-
 function formatSkillLabel(skill: SkillCategory) {
   return skill.charAt(0).toUpperCase() + skill.slice(1)
 }
@@ -124,20 +116,6 @@ function getSignalNextMove(score: number) {
   return 'Keep the scenario simple and repeat the core structure until it sounds natural out loud.'
 }
 
-function buildCoachConversation(topic: string, focusLabel: string, courseStep: string | null) {
-  const reinforcement = courseStep ? ` After the round, reinforce it with ${courseStep}.` : ''
-
-  return [
-    { id: 'intro', role: 'ai' as const, content: INTRO_QUESTION },
-    { id: 'user-choice', role: 'user' as const, content: topic },
-    {
-      id: 'coach-reply',
-      role: 'ai' as const,
-      content: `Great. We will work on ${topic.toLowerCase()}. I will keep this round grounded in ${focusLabel.toLowerCase()}, push on the hard part of the conversation, and help you leave with one sharper response you can actually use.${reinforcement}`,
-    },
-  ]
-}
-
 function getPracticePlan(skill: SkillCategory, courseTitle: string | null, courseStep: string | null): PracticePlan {
   const reinforcement = courseTitle
     ? courseStep
@@ -171,19 +149,19 @@ function getPracticePlan(skill: SkillCategory, courseTitle: string | null, cours
         ],
         starterPrompts: [
           {
-            title: 'Coach a missed target',
-            prompt: 'Help me practice a feedback conversation with someone who missed target.',
-            detail: 'Use this when you need to be direct without sounding flat or defensive.',
+            title: 'Missed target feedback',
+            prompt: 'A teammate missed their launch target again and you need to give direct feedback while keeping them motivated.',
+            detail: 'Good for practicing direct feedback without sounding harsh or vague.',
           },
           {
             title: 'Delegate a launch task',
-            prompt: 'Practice delegating a launch task clearly.',
-            detail: 'Sharpens ownership, timing, and the checkpoint at the end.',
+            prompt: 'You need to hand off a high-stakes launch task to a teammate and make sure ownership, timing, and follow-up are crystal clear.',
+            detail: 'Sharpens ownership language, deadlines, and the checkpoint at the end.',
           },
           {
             title: 'Lead a tense decision',
-            prompt: 'Coach me through a team decision under pressure.',
-            detail: 'Good for staying calm and decisive when there are tradeoffs.',
+            prompt: 'Two teammates disagree on the next move during a busy shift and you need to make the call calmly under pressure.',
+            detail: 'Useful for staying decisive when there is pressure and tradeoffs.',
           },
         ],
         quickWins: [
@@ -217,19 +195,19 @@ function getPracticePlan(skill: SkillCategory, courseTitle: string | null, cours
         ],
         starterPrompts: [
           {
-            title: 'Talk through a policy scenario',
-            prompt: 'Walk me through a policy scenario where the safe answer is harder to say.',
-            detail: 'Use this to get comfortable with gray-area judgment calls.',
+            title: 'Hard policy call',
+            prompt: 'A customer asks for something that crosses a policy line, and you need to explain the no clearly without escalating the situation.',
+            detail: 'Helps with gray-area judgment calls where the safe answer is harder to say.',
           },
           {
-            title: 'Pressure-test an ethics call',
-            prompt: 'Test me on an ethics decision and push back on my answer.',
-            detail: 'Useful when you want the coach to challenge your first instinct.',
+            title: 'Ethics under pressure',
+            prompt: 'A teammate suggests a shortcut that feels risky, and you need to push back while keeping the conversation constructive.',
+            detail: 'Useful when your first instinct needs to hold up under pressure.',
           },
           {
-            title: 'Explain a rule clearly',
-            prompt: 'Help me explain a compliance rule clearly to a customer.',
-            detail: 'Best for turning formal policy into plain language.',
+            title: 'Explain the rule simply',
+            prompt: 'You need to explain a compliance rule to a frustrated customer in plain language they can quickly understand.',
+            detail: 'Best for turning formal policy into calm, clear language.',
           },
         ],
         quickWins: [
@@ -263,19 +241,19 @@ function getPracticePlan(skill: SkillCategory, courseTitle: string | null, cours
         ],
         starterPrompts: [
           {
-            title: 'Improve discovery questions',
-            prompt: 'Practice discovery questions with me.',
-            detail: 'Use this if your early questions do not open the conversation enough.',
+            title: 'Discovery that opens up',
+            prompt: 'A customer is giving short answers, and you need to ask better discovery questions to uncover what actually matters to them.',
+            detail: 'Best when your opening questions feel polite but not very productive.',
           },
           {
-            title: 'Handle objections better',
-            prompt: 'Help me handle objections better.',
-            detail: 'Good for when the conversation gets stuck after price or value pushback.',
+            title: 'Price objection recovery',
+            prompt: 'A customer says the product feels too expensive, and you need to acknowledge the concern, reframe value, and keep the conversation moving.',
+            detail: 'Good for price, value, or timing pushback that stalls momentum.',
           },
           {
-            title: 'Say it more clearly',
-            prompt: 'Coach me on making my answer clearer.',
-            detail: 'Best when you know the answer but it comes out too long or too soft.',
+            title: 'Close with more confidence',
+            prompt: 'The conversation is going well, but you need to land a clearer next step instead of ending with a soft close.',
+            detail: 'Useful when you know what to say but the ending loses momentum.',
           },
         ],
         quickWins: [
@@ -310,19 +288,19 @@ function getPracticePlan(skill: SkillCategory, courseTitle: string | null, cours
         ],
         starterPrompts: [
           {
-            title: 'Explain a feature simply',
-            prompt: 'Help me explain a feature simply.',
-            detail: 'Use this when you need to translate product detail into customer value.',
+            title: 'Feature to customer value',
+            prompt: 'Explain why iPhone 16 Pro is a strong fit for a customer focused on gaming performance and Camera Control for content creation.',
+            detail: 'Great for translating a technical feature into why it matters in real use.',
           },
           {
-            title: 'Practice a product pitch',
-            prompt: 'Practice a product pitch with me.',
-            detail: 'Good for getting more confident and less scripted on the floor.',
+            title: 'Compare the right models',
+            prompt: 'Help a customer choose between MacBook Air and MacBook Pro based on multitasking, battery life, and light video editing.',
+            detail: 'Useful for side-by-side comparisons that need to feel confident and natural.',
           },
           {
-            title: 'Build technical confidence',
-            prompt: 'Coach me on technical confidence.',
-            detail: 'Best when you know the product but still hesitate under pressure.',
+            title: 'Make the explanation simpler',
+            prompt: 'Explain ProMotion and Apple Intelligence to a business professional upgrading from an older iPhone.',
+            detail: 'Best when you know the product but want to sound simpler and more confident.',
           },
         ],
         quickWins: [
@@ -633,11 +611,7 @@ export function AIPracticeScreen({
 
   const [screen, setScreen] = useState<SessionScreen>('dashboard')
   const [practiceOpen, setPracticeOpen] = useState(false)
-  const [messages, setMessages] = useState<CoachMessage[]>([
-    { id: 'intro', role: 'ai', content: INTRO_QUESTION },
-  ])
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
-  const [topicDraft, setTopicDraft] = useState('')
   const [aiState, setAiState] = useState<SessionAIState>('idle')
   const [sessionMessages, setSessionMessages] = useState<SessionMessage[]>([])
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -1184,7 +1158,6 @@ export function AIPracticeScreen({
     sessionMessagesRef.current = initialMessages
 
     setSelectedTopic(topic)
-    setTopicDraft(topic)
     setPracticeOpen(false)
     setSessionContext(nextContext)
     setSessionMessages(initialMessages)
@@ -1208,21 +1181,17 @@ export function AIPracticeScreen({
     }
   }, [autoStartFromPlan, prepareSession, profile.nextStepPlan])
 
-  const openPracticePanel = (initialTopic?: string) => {
+  const openPracticePanel = useCallback((initialTopic?: string) => {
     setPracticeOpen(true)
 
     const topic = initialTopic ?? selectedTopic
     if (topic) {
       setSelectedTopic(topic)
-      setTopicDraft(topic)
-      setMessages(buildCoachConversation(topic, focusLabel, courseStep))
       return
     }
 
-    setTopicDraft('')
     setSelectedTopic(null)
-    setMessages([{ id: 'intro', role: 'ai', content: INTRO_QUESTION }])
-  }
+  }, [selectedTopic])
 
   const closePracticePanel = useCallback(() => {
     setPracticeOpen(false)
@@ -1247,16 +1216,12 @@ export function AIPracticeScreen({
     openPracticePanel(scenario)
   }, [autoStartFromPlan, openPracticePanel, practiceOpen, profile.nextStepPlan, screen, skipDashboard])
 
-  const submitTopic = () => {
-    const topic = topicDraft.trim()
-    if (!topic) return
-
+  const selectTopic = (topic: string) => {
     setSelectedTopic(topic)
-    setMessages(buildCoachConversation(topic, focusLabel, courseStep))
   }
 
   const startPracticeRound = () => {
-    const topic = (selectedTopic ?? topicDraft).trim()
+    const topic = selectedTopic?.trim()
     if (!topic) return
 
     prepareSession(topic, { scenario: topic })
@@ -1694,74 +1659,39 @@ export function AIPracticeScreen({
                 </p>
               </div>
 
-              <div className="rounded-[24px] border border-white/10 bg-slate-950/60 p-4">
-                <div className="space-y-3">
-                  {messages.map(message => (
-                    <div key={message.id} className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}>
-                      <div
-                        className={cn(
-                          'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6',
-                          message.role === 'user' ? 'bg-cyan-400 text-slate-950' : 'bg-white/8 text-white/90',
-                        )}
-                      >
-                        {message.content}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
+                Pick a scenario
+              </p>
+              <div className="space-y-3">
+                {plan.starterPrompts.map(prompt => {
+                  const isSelected = selectedTopic === prompt.prompt
 
-              <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                <label htmlFor="coach-topic" className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
-                  Tell the coach what to work on
-                </label>
-                <div className="mt-3 flex gap-3">
-                  <input
-                    id="coach-topic"
-                    value={topicDraft}
-                    onChange={event => setTopicDraft(event.target.value)}
-                    onKeyDown={event => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault()
-                        submitTopic()
-                      }
-                    }}
-                    placeholder="Example: Help me lead a difficult feedback conversation"
-                    className="h-12 flex-1 rounded-full border border-white/10 bg-slate-950/70 px-4 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-cyan-300/50"
-                  />
-                  <Button className="rounded-full bg-gradient-to-r from-primary to-accent px-5 font-semibold text-white" onClick={submitTopic}>
-                    Set scenario
-                  </Button>
-                </div>
-              </div>
-
-              {selectedTopic && (
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Selected scenario</p>
-                  <p className="mt-2 text-sm leading-6 text-white/85">{selectedTopic}</p>
-                </div>
-              )}
-
-              {!selectedTopic && (
-                <div className="flex flex-wrap gap-2">
-                  {plan.starterPrompts.map(prompt => (
+                  return (
                     <button
                       key={prompt.prompt}
                       type="button"
-                      onClick={() => openPracticePanel(prompt.prompt)}
-                      className="rounded-full bg-white/8 px-4 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/12"
+                      onClick={() => selectTopic(prompt.prompt)}
+                      className={cn(
+                        'w-full rounded-[24px] border px-4 py-4 text-left transition',
+                        isSelected
+                          ? 'border-cyan-300/50 bg-cyan-300/10 shadow-[0_0_0_1px_rgba(103,232,249,0.15)]'
+                          : 'border-white/10 bg-slate-950/40 hover:bg-white/8',
+                      )}
                     >
-                      {prompt.title}
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
+                        Scenario
+                      </p>
+                      <p className="mt-2 text-base font-semibold leading-7 text-white">{prompt.prompt}</p>
                     </button>
-                  ))}
-                </div>
-              )}
+                  )
+                })}
+              </div>
 
               <div className="flex gap-3">
                 <Button
                   className="flex-1 rounded-full bg-gradient-to-r from-primary to-accent font-semibold text-white"
                   onClick={startPracticeRound}
-                  disabled={!selectedTopic && !topicDraft.trim()}
+                  disabled={!selectedTopic}
                 >
                   Start practice round
                 </Button>

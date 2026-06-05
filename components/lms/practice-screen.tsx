@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Brain,
   ChevronLeft,
@@ -21,10 +21,9 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SpeedChecklistSummary } from '@/components/lms/speed-checklist-summary'
-import { SpeedMcqGame } from '@/components/lms/games/speed-mcq-game'
 import { projectSpeedFrameworkStages } from '@/lib/speed-framework'
 import { cn } from '@/lib/utils'
-import type { Course, MiniGame, SkillCategory, SkillUpdateContext, SpeedStageKey, UserSkillProfile } from '@/lib/types'
+import type { SkillCategory, SkillUpdateContext, SpeedStageKey, UserSkillProfile } from '@/lib/types'
 
 type PracticeMode = 'roleplay' | 'pitch'
 type ScreenState = 'landing' | 'setup' | 'active' | 'complete'
@@ -32,9 +31,7 @@ type AIState = 'idle' | 'listening' | 'thinking' | 'speaking'
 
 interface PracticeScreenProps {
   profile: UserSkillProfile
-  courses: Course[]
   onStartPractice: (skillCategory: SkillCategory, score: number, context?: SkillUpdateContext) => void
-  onOpenCourse: (courseId: string) => void
   onOpenAICoach: () => void
 }
 
@@ -110,48 +107,17 @@ const recentSessions = [
   { id: 'session-2', label: 'Quiz: Discovery Questions', meta: '+25 XP • Yesterday', score: 92, mode: 'pitch' as const },
 ] as const
 
-type DailyChallengeConfig = {
-  game: MiniGame
-  skillCategory: SkillCategory
-  themeLabel: string
-  description: string
-}
-
-function buildFallbackDailyChallenge(): DailyChallengeConfig {
-  return {
-    game: {
-      id: 'daily-price-objections',
-      title: 'Price Objection Daily Challenge',
-      gameType: 'speed-mcq',
-      xpReward: 100,
-      questions: [
-        {
-          id: 'daily-price-1',
-          text: 'What is the strongest first move when a buyer says the price feels too high?',
-          options: ['Offer a discount immediately', 'Ask what outcome matters most', 'Repeat the product specs', 'Move to closing'],
-          correctAnswer: 1,
-          explanation: 'Start by understanding what matters most so you can tie the response to real value.',
-        },
-        {
-          id: 'daily-price-2',
-          text: 'Which response handles a price objection most effectively?',
-          options: ['Highlight long-term value and ROI', 'Tell them everyone pays this price', 'Avoid the objection and keep pitching', 'Ask them to decide later'],
-          correctAnswer: 0,
-          explanation: 'Price objections are easier to overcome when the customer can see concrete business value.',
-        },
-        {
-          id: 'daily-price-3',
-          text: 'What proves you are actively listening during an objection?',
-          options: ['Jumping in with a rebuttal', 'Restating the concern and confirming it', 'Reading the feature list', 'Talking faster to keep control'],
-          correctAnswer: 1,
-          explanation: 'Reflecting the concern back shows attention and helps the customer feel understood.',
-        },
-      ],
-    },
-    skillCategory: 'communication',
-    themeLabel: 'Handling Price Objections',
-    description: 'Three quick MCQs on objection handling, value framing, and active listening.',
+function renderResponsiveFocusLabel(skill: SkillCategory) {
+  if (skill !== 'technical') {
+    return skill
   }
+
+  return (
+    <>
+      <span className="sm:hidden">Probing</span>
+      <span className="hidden sm:inline">Plan to Probe</span>
+    </>
+  )
 }
 
 function formatDuration(totalSeconds: number) {
@@ -325,7 +291,7 @@ function SessionComplete({
   )
 }
 
-export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoach }: PracticeScreenProps) {
+export function PracticeScreen({ profile, onStartPractice, onOpenAICoach }: PracticeScreenProps) {
   const [screen, setScreen] = useState<ScreenState>('landing')
   const [mode, setMode] = useState<PracticeMode>('roleplay')
   const [aiState, setAiState] = useState<AIState>('idle')
@@ -334,32 +300,9 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
   const [isMuted, setIsMuted] = useState(false)
   const [result, setResult] = useState<ReturnType<typeof buildSessionResult> | null>(null)
   const [speedStageSnapshot, setSpeedStageSnapshot] = useState<UserSkillProfile['speedFramework']['stages'] | null>(null)
-  const [dailyChallengeOpen, setDailyChallengeOpen] = useState(false)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const focusSkill = profile.weakAreas[0] ?? 'communication'
   const coach = coaches[mode]
-  const dailyChallenge = useMemo<DailyChallengeConfig>(() => {
-    for (const course of courses) {
-      for (const module of course.modules ?? []) {
-        const challengeGame = module.miniGames.find(({ game }) =>
-          game.gameType === 'speed-mcq' && game.questions.some(question => /price objection/i.test(question.text)),
-        )?.game
-
-        if (!challengeGame) continue
-
-        const priceEpisode = module.episodes.find(episode => /price objection/i.test(episode.title))
-
-        return {
-          game: challengeGame,
-          skillCategory: course.skillCategory,
-          themeLabel: priceEpisode?.title ?? module.title,
-          description: 'Three quick MCQs pulled from the price-objection theme so the challenge opens straight into the drill.',
-        }
-      }
-    }
-
-    return buildFallbackDailyChallenge()
-  }, [courses])
 
   useEffect(() => {
     if (screen !== 'active') return
@@ -573,28 +516,6 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Sharpen your skills with real scenarios</p>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setDailyChallengeOpen(true)}
-        className="w-full overflow-hidden rounded-[28px] border border-fuchsia-200/70 bg-[linear-gradient(135deg,#faf5ff_0%,#f5d0fe_18%,#eef2ff_100%)] p-5 text-left shadow-[0_20px_60px_rgba(124,58,237,0.12)] transition-transform hover:-translate-y-0.5 dark:border-fuchsia-500/20 dark:bg-[linear-gradient(135deg,rgba(88,28,135,0.34)_0%,rgba(49,46,129,0.72)_100%)] dark:shadow-[0_20px_60px_rgba(15,23,42,0.3)]"
-      >
-        <div className="flex items-center gap-2 text-fuchsia-700 dark:text-fuchsia-200">
-          <Zap className="h-4 w-4" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.28em]">Daily Challenge</span>
-        </div>
-        <h2 className="mt-4 text-3xl font-black text-slate-950 dark:text-white">Handle 3 Price Objections</h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{dailyChallenge.description}</p>
-        <div className="mt-5 flex flex-wrap items-center gap-3 text-sm font-semibold">
-          <span className="rounded-full bg-white/80 px-3 py-1.5 text-slate-800 shadow-sm dark:bg-white/10 dark:text-white/85">
-            {dailyChallenge.game.questions.length} MCQs
-          </span>
-          <span className="rounded-full bg-fuchsia-500/10 px-3 py-1.5 text-fuchsia-700 dark:text-fuchsia-200">
-            +{dailyChallenge.game.xpReward} XP
-          </span>
-          <span className="text-slate-700 dark:text-white/80">{dailyChallenge.themeLabel}</span>
-        </div>
-      </button>
-
       <section>
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Practice Modes</h2>
         <div className="mt-3 space-y-3">
@@ -670,7 +591,7 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Recent Sessions</h2>
           <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-            Focus: {focusSkill}
+            Focus: {renderResponsiveFocusLabel(focusSkill)}
           </div>
         </div>
         <div className="mt-3 space-y-3">
@@ -690,34 +611,6 @@ export function PracticeScreen({ profile, courses, onStartPractice, onOpenAICoac
           ))}
         </div>
       </section>
-
-      {dailyChallengeOpen && (
-        <SpeedMcqGame
-          game={dailyChallenge.game}
-          continueLabel="Back to Practice"
-          displayCopy={{
-            topEyebrow: 'Daily Challenge',
-            topTitle: 'Price Objections',
-            cardEyebrow: 'Daily Challenge',
-            cardTitle: 'Handle 3 Price Objections',
-            questionHint: 'Move through three quick objection-handling prompts and lock in the strongest value-based response.',
-            resultsEyebrow: 'Daily Challenge',
-            resultsTitle: 'Challenge Complete',
-            resultsDescription: 'You worked through the objection drill and banked bonus XP from quick decisions.',
-            retryHint: 'Give it another run to tighten the price-objection instincts before your next live scenario.',
-          }}
-          onClose={() => setDailyChallengeOpen(false)}
-          onComplete={(score) => {
-            onStartPractice(dailyChallenge.skillCategory, score, {
-              eventType: 'mini_game',
-              practiceMode: 'quiz',
-              sourceId: dailyChallenge.game.id,
-              sourceTitle: dailyChallenge.game.title,
-            })
-            setDailyChallengeOpen(false)
-          }}
-        />
-      )}
     </div>
   )
 }

@@ -135,10 +135,13 @@ function buildNextStep(profile: typeof userSkillProfile) {
     .sort((a, b) => b.gap - a.gap)
 
   const primary = entries[0] ?? { skill: 'technical' as SkillCategory, gap: 0 }
+  const primaryLabel = primary.skill === 'technical'
+    ? 'Plan to Probe'
+    : `${primary.skill.charAt(0).toUpperCase()}${primary.skill.slice(1)}`
   const nextStepPlan: NextStepPlan = {
     type: 'ai_practice',
     skillCategory: primary.skill,
-    title: `${primary.skill.charAt(0).toUpperCase() + primary.skill.slice(1)} focus session`,
+    title: `${primaryLabel} focus session`,
     status: profile.nextStepPlan?.skillCategory === primary.skill && profile.nextStepPlan?.status === 'completed'
       ? 'completed'
       : 'selected',
@@ -146,12 +149,12 @@ function buildNextStep(profile: typeof userSkillProfile) {
 
   const recommendations = [
     nextStepPlan.status === 'completed'
-      ? `Keep building ${primary.skill} to close the remaining gap.`
-      : `Practice with Nova to strengthen ${primary.skill}.`,
+      ? `Keep building ${primaryLabel} to close the remaining gap.`
+      : `Practice with Nova to strengthen ${primary.skill === 'technical' ? 'probing' : primary.skill}.`,
     ...entries
       .filter(entry => entry.skill !== primary.skill && entry.gap > 0)
       .slice(0, 2)
-      .map(entry => `Keep moving on ${entry.skill} to narrow the gap.`),
+      .map(entry => `Keep moving on ${entry.skill === 'technical' ? 'Plan to Probe' : `${entry.skill.charAt(0).toUpperCase()}${entry.skill.slice(1)}`} to narrow the gap.`),
   ]
 
   return { nextStepPlan, recommendations }
@@ -414,6 +417,12 @@ function getLeagueHomeCopy(currentTier: LeagueTierState, nextTier: LeagueTierSta
   return `You are in ${currentTier.name} Level. ${nextTier.name} Level is next, and a few strong wins will move you closer.`
 }
 
+function getSkillDisplayLabel(skillCategory: string) {
+  return skillCategory === 'technical'
+    ? 'Plan to Probe'
+    : `${skillCategory.charAt(0).toUpperCase()}${skillCategory.slice(1)}`
+}
+
 function getRecommendationLabel(skillCategory: string) {
   return skillCategory === 'technical' ? 'probing' : skillCategory
 }
@@ -426,7 +435,7 @@ function PracticePanel({
   onSkillUpdate: (skillCategory: SkillCategory | string, score: number) => void
 }) {
   const focusSkill = profile.weakAreas[0] ?? 'technical'
-  const focusLabel = focusSkill.charAt(0).toUpperCase() + focusSkill.slice(1)
+  const focusLabel = getSkillDisplayLabel(focusSkill)
 
   return (
     <div className="space-y-4 px-4 py-4">
@@ -972,7 +981,7 @@ export default function LMSPage() {
   const courseProgressPercent = inProgressCourse ? (progressEpisodes / inProgressCourse.episodes.length) * 100 : 0
   const unlockedBadges = user.badges.filter(badge => !badge.locked)
   const profileBadges = allBadges.filter((badge) => (
-    !badge.locked || badge.name === 'Sales Champion' || badge.name === 'Speed Learner'
+    !badge.locked || badge.name === 'Sales Champion'
   ))
   const recommendationCards = skillProfile.weakAreas
     .slice(0, 2)
@@ -1659,7 +1668,10 @@ export default function LMSPage() {
                   <div className="flex items-center">
                     <div className="ios-frost rounded-full px-3 py-2 text-right" style={novaFrostStyle}>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Focus</p>
-                      <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">Plan to Probe</p>
+                      <p className="mt-1 text-sm font-semibold tracking-[-0.02em] text-foreground">
+                        <span className="sm:hidden">Plan to Probe</span>
+                        <span className="hidden sm:inline">Plan to Probe</span>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1833,44 +1845,84 @@ export default function LMSPage() {
 
             <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(280px,0.92fr)]">
               <div className="space-y-3">
-                {recommendationCards.length > 0 ? recommendationCards.map((rec, index) => (
-                  <motion.button
+                {recommendationCards.length > 0 ? recommendationCards.map((rec, index) => {
+                  const resumeEpisodes = rec.episodes
+                    .filter(episode => !episode.completed && !episode.locked)
+                    .slice(0, 2)
+
+                  const fallbackEpisodes = resumeEpisodes.length > 0
+                    ? resumeEpisodes
+                    : rec.episodes.filter(episode => !episode.locked).slice(0, 2)
+
+                  return (
+                  <motion.div
                     key={rec.id}
                     initial={getRevealProps(0.36 + (index * 0.04)).initial}
                     animate={getRevealProps(0.36 + (index * 0.04)).animate}
                     transition={getRevealProps(0.36 + (index * 0.04)).transition}
                     whileHover={hoverLift}
                     whileTap={pressDown}
-                    onClick={() => handleContinueLearning(rec.id)}
-                    className="ios-frost group flex w-full items-center gap-3 rounded-[1.55rem] p-3 text-left"
+                    className="ios-frost group w-full rounded-[1.8rem] p-4 text-left"
                     style={recommendationCardStyle}
                   >
-                    <div className="relative h-16 w-16 overflow-hidden rounded-[1.15rem]">
-                      <img
-                        src={rec.thumbnail || '/placeholder.svg'}
-                        alt={rec.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleContinueLearning(rec.id)}
+                      className="flex w-full items-center gap-3 text-left"
+                    >
+                      <div className="relative h-18 w-18 overflow-hidden rounded-[1.2rem]">
+                        <img
+                          src={rec.thumbnail || '/placeholder.svg'}
+                          alt={rec.title}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
                           <TrendingUp className="h-3.5 w-3.5 text-primary" />
                           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Improve {getRecommendationLabel(rec.skillCategory)}
+                            Strengthen {getRecommendationLabel(rec.skillCategory)}
                           </span>
                         </div>
-                      <h4 className="mt-1 truncate text-base font-semibold tracking-[-0.03em] text-foreground">{rec.title}</h4>
-                      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {rec.totalDuration}
-                        </span>
-                        <span className="font-semibold text-primary">+{rec.xpReward} XP</span>
+                        <h4 className="mt-1 truncate text-[1.2rem] font-semibold tracking-[-0.03em] text-foreground">{rec.title}</h4>
+                        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            {rec.totalDuration}
+                          </span>
+                          <span className="font-semibold text-primary">+{rec.xpReward} XP</span>
+                        </div>
                       </div>
+                      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:translate-x-0.5" />
+                    </button>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {fallbackEpisodes.map((episode, episodeIndex) => (
+                        <button
+                          key={episode.id}
+                          type="button"
+                          onClick={() => handleContinueLearning(rec.id)}
+                          className="rounded-[1.2rem] border border-white/70 bg-white/78 p-3 text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-transform hover:-translate-y-0.5 dark:border-white/10 dark:bg-white/8"
+                        >
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            Episode {episodeIndex + 1}
+                          </p>
+                          <p className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-foreground">
+                            {episode.title}
+                          </p>
+                          <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {episode.duration}
+                            </span>
+                            <span className="font-semibold text-primary">+{episode.xp} XP</span>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:translate-x-0.5" />
-                  </motion.button>
-                )) : (
+                  </motion.div>
+                  )
+                }) : (
                   <div className="ios-frost rounded-[1.55rem] p-4">
                     <p className="text-sm font-medium text-muted-foreground">No recommendations right now. You&apos;re in a great place to explore new series.</p>
                   </div>
@@ -2083,7 +2135,7 @@ export default function LMSPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
                           <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Improve {getRecommendationLabel(area)}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Strengthen {getRecommendationLabel(area)}</span>
                         </div>
                       <h4 className="font-semibold text-sm truncate">{rec.title}</h4>
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -2173,9 +2225,7 @@ export default function LMSPage() {
         ) : (
           <PracticeScreen
             profile={skillProfile}
-            courses={courses}
             onStartPractice={handleSkillUpdate}
-            onOpenCourse={handleContinueLearning}
             onOpenAICoach={openAIPracticeCoach}
           />
         )
