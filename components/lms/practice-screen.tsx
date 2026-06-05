@@ -5,18 +5,13 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  MessageCircle,
   Mic,
   MicOff,
   Phone,
   PhoneOff,
   Sparkles,
   Timer,
-  TrendingUp,
   Volume2,
-  VolumeX,
-  X,
   Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -75,49 +70,13 @@ const coaches: Record<PracticeMode, CoachConfig> = {
   },
 }
 
-const practiceModes = [
-  {
-    id: 'roleplay' as const,
-    title: 'Roleplay with AI',
-    description: 'Practice objection handling with our AI sales coach',
-    duration: '5-10 min',
-    xp: 50,
-    Icon: MessageCircle,
-    popular: true,
-    badge: 'AI Avatar',
-    shellClassName: 'bg-[linear-gradient(180deg,#faf5ff_0%,#f5ecff_48%,#ffffff_100%)] dark:bg-[linear-gradient(180deg,rgba(91,33,182,0.26)_0%,rgba(30,27,75,0.92)_100%)]',
-    iconClassName: 'bg-[linear-gradient(180deg,#a855f7_0%,#7c3aed_100%)]',
-  },
-  {
-    id: 'quiz' as const,
-    title: 'Quick Quiz',
-    description: '5 questions to test your knowledge in 60 seconds',
-    duration: '60 sec',
-    xp: 25,
-    Icon: Brain,
-    popular: false,
-    badge: null,
-    shellClassName: 'bg-[linear-gradient(180deg,#eff6ff_0%,#ecfeff_100%)] dark:bg-[linear-gradient(180deg,rgba(14,116,144,0.22)_0%,rgba(15,23,42,0.92)_100%)]',
-    iconClassName: 'bg-[linear-gradient(180deg,#0ea5e9_0%,#2563eb_100%)]',
-  },
-] as const
-
 const recentSessions = [
-  { id: 'session-1', label: 'Roleplay: Price Objection', meta: '+50 XP • 2h ago', score: 85, mode: 'roleplay' as const },
-  { id: 'session-2', label: 'Quiz: Discovery Questions', meta: '+25 XP • Yesterday', score: 92, mode: 'pitch' as const },
+  { id: 'session-1', label: 'MacBook M4 discovery', meta: '+60 XP • 2h ago', score: 88 },
+  { id: 'session-2', label: 'Value framing refresher', meta: '+60 XP • Yesterday', score: 91 },
 ] as const
 
-function renderResponsiveFocusLabel(skill: SkillCategory) {
-  if (skill !== 'technical') {
-    return skill
-  }
-
-  return (
-    <>
-      <span className="sm:hidden">Probing</span>
-      <span className="hidden sm:inline">Plan to Probe</span>
-    </>
-  )
+function getFocusLabel(skill: SkillCategory) {
+  return skill === 'technical' ? 'Plan to Probe' : `${skill.charAt(0).toUpperCase()}${skill.slice(1)}`
 }
 
 function formatDuration(totalSeconds: number) {
@@ -516,7 +475,7 @@ export function PracticeScreen({ profile, onStartPractice, onOpenAICoach }: Prac
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Sharpen your skills with real scenarios</p>
       </div>
 
-      <section>
+      <section className="pb-4">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Practice Modes</h2>
         <div className="mt-3 space-y-3">
           <button
@@ -546,44 +505,6 @@ export function PracticeScreen({ profile, onStartPractice, onOpenAICoach }: Prac
               <ChevronRight className="h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500" />
             </div>
           </button>
-
-          {practiceModes.map(item => {
-            const Icon = item.Icon
-            return (
-              <button
-                key={item.id}
-                type="button"
-                      onClick={() => item.id === 'quiz'
-                        ? onStartPractice(focusSkill, 76, {
-                            eventType: 'assessment',
-                            practiceMode: 'quiz',
-                            sourceId: 'practice-quick-quiz',
-                            sourceTitle: 'Quick Quiz',
-                          })
-                        : openMode(item.id)}
-                className={cn('w-full rounded-[28px] border border-white/70 p-4 text-left shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-transform hover:-translate-y-0.5 dark:border-white/10 dark:shadow-[0_16px_40px_rgba(2,6,23,0.28)]', item.shellClassName)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={cn('flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-[22px] text-white shadow-lg', item.iconClassName)}>
-                    <Icon className="h-7 w-7" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-2xl font-black text-slate-950 dark:text-white">{item.title}</h3>
-                      {item.popular && <span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600 dark:bg-white/10 dark:text-white/75">Popular</span>}
-                      {item.badge && <span className="rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-700 dark:text-violet-300">{item.badge}</span>}
-                    </div>
-                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.description}</p>
-                    <div className="mt-3 flex items-center gap-4 text-sm font-semibold text-slate-700 dark:text-white/80">
-                      <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4" /> {item.duration}</span>
-                      <span className="inline-flex items-center gap-1.5 text-primary"><Zap className="h-4 w-4" /> +{item.xp} XP</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500" />
-                </div>
-              </button>
-            )
-          })}
         </div>
       </section>
 
@@ -591,7 +512,7 @@ export function PracticeScreen({ profile, onStartPractice, onOpenAICoach }: Prac
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Recent Sessions</h2>
           <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-            Focus: {renderResponsiveFocusLabel(focusSkill)}
+            Focus: {getFocusLabel(focusSkill)}
           </div>
         </div>
         <div className="mt-3 space-y-3">
@@ -604,13 +525,15 @@ export function PracticeScreen({ profile, onStartPractice, onOpenAICoach }: Prac
                 <h3 className="truncate text-base font-bold text-slate-950 dark:text-white">{session.label}</h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{session.meta}</p>
               </div>
-              <button type="button" onClick={() => openMode(session.mode)} className="rounded-full bg-secondary p-2 text-foreground hover:bg-secondary/80">
-                <TrendingUp className="h-4 w-4" />
+              <button type="button" onClick={onOpenAICoach} className="rounded-full bg-secondary p-2 text-foreground hover:bg-secondary/80">
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           ))}
         </div>
       </section>
+
     </div>
   )
 }
+
