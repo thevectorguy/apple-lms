@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
   Bell, Flame, Zap, Sun, Moon, Sparkles, Clock, ChevronRight,
-  Search, Play, Star, TrendingUp, Brain, Trophy, Users, Check, Send, X,
+  Search, Play, Star, TrendingUp, Brain, Trophy, Users, Check, Send, X, Award,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -1457,7 +1457,7 @@ export default function LMSPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="max-w-xl">
 
-                    <div className="mt-4 flex items-center gap-3">
+                    <div className="flex items-center gap-3">
                       <h2 className="text-[2.28rem] font-black tracking-[-0.078em] text-foreground sm:text-[2.85rem]">
                         hey {firstName.toLowerCase()}
                       </h2>
@@ -2276,6 +2276,35 @@ export default function LMSPage() {
           <div className="space-y-3">
             <h3 className="font-bold text-lg">All Badges</h3>
             <BadgesGrid badges={profileBadges} />
+          </div>
+          <div className="space-y-3">
+            <h3 className="font-bold text-lg">Certificates Earned</h3>
+            <div className="space-y-3">
+              {courses.filter(c => c.certificateTitle).map(c => {
+                const earned = c.status === 'completed'
+                return (
+                  <div key={c.id} className={cn('glass-card rounded-xl p-4 flex items-center gap-4', !earned && 'opacity-60')}>
+                    <div className={cn('flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl', earned ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-muted')}>
+                      <Award className={cn('h-7 w-7', earned ? 'text-amber-500' : 'text-muted-foreground')} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-foreground truncate">{c.certificateTitle}</p>
+                      <p className="text-sm text-muted-foreground truncate">{c.title}</p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        {earned ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-green-500" />
+                            <span className="text-xs font-semibold text-green-600 dark:text-green-400">Earned</span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Complete the course to unlock</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
           <Button variant="outline" className="w-full bg-transparent">Edit Profile</Button>
         </div>

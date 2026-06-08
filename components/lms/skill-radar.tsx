@@ -186,7 +186,7 @@ export function SkillRadar({
     return (
       <>
         <div
-          className="relative overflow-hidden rounded-[2rem] p-5"
+          className="relative overflow-hidden rounded-[2rem] px-5 pb-5 pt-3"
           style={{
             background: 'rgba(255,255,255,0.82)',
             backdropFilter: 'blur(32px) saturate(160%)',
@@ -203,8 +203,7 @@ export function SkillRadar({
             {/* Card header */}
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Profile signal</p>
-                <h3 className="text-[1.8rem] font-extrabold tracking-tight text-slate-900 sm:text-2xl">SPEED Checklist</h3>
+                <h3 className="text-[1.8rem] font-extrabold tracking-tight text-slate-900 sm:text-2xl">Current Learning Fit</h3>
               </div>
               <button
                 type="button"
